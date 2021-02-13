@@ -1,0 +1,24 @@
+# permissions for end users to edit vegeta.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vegeta-editor-role
+rules:
+- apiGroups:
+  - vegeta.testing.io
+  resources:
+  - vegeta
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vegeta.testing.io
+  resources:
+  - vegeta/status
+  verbs:
+  - get

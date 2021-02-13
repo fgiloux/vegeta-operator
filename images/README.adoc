@@ -1,0 +1,25 @@
+= Image used for running Vegeta in a container
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+ifndef::env-github[]
+:imagesdir: ./img
+endif::[]
+:toc:
+:toc-placement!:
+
+Container image for the Vegeta HTTP load testing tool. Inspired by https://github.com/peter-evans/vegeta-docker" 
+
+== Build
+
+$ podman build .
+
+== Run
+
+$ podman...
+
+also reused by the Vegeta operator

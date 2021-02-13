@@ -1,0 +1,7 @@
+apiVersion: vegeta.testing.io/v1alpha1
+kind: Vegeta
+metadata:
+  name: vegeta-sample
+spec:
+  # Add fields here
+  foo: bar

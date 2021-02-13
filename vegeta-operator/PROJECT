@@ -1,0 +1,13 @@
+domain: testing.io
+layout: go.kubebuilder.io/v3
+projectName: vegeta-operator
+repo: github.com/fgiloux/vegeta-operator
+resources:
+- crdVersion: v1
+  group: vegeta
+  kind: Vegeta
+  version: v1alpha1
+version: 3-alpha
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}

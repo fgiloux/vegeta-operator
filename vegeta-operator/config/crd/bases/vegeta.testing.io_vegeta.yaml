@@ -1,0 +1,450 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: vegeta.vegeta.testing.io
+spec:
+  group: vegeta.testing.io
+  names:
+    kind: Vegeta
+    listKind: VegetaList
+    plural: vegeta
+    singular: vegeta
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Vegeta is the Schema for the vegeta API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VegetaSpec defines the desired state of Vegeta
+            properties:
+              attack:
+                description: Specifies the attack parameters.
+                properties:
+                  bodyConfigMap:
+                    description: Specifies a config map containing the body of every
+                      request unless overridden per attack target. The config  map
+                      should contain a single file named body.txt
+                    type: string
+                  certSecret:
+                    description: Specifies the secret containing the TLS client PEM
+                      encoded certificate file. The secret should contain a single
+                      file named client.crt
+                    type: string
+                  chunked:
+                    description: Specifies whether to send request bodies with the
+                      chunked transfer encoding.
+                    type: boolean
+                  connections:
+                    description: Specifies the maximum number of idle open connections
+                      per target host (defaults to 10000).
+                    type: integer
+                  duration:
+                    description: Specifies the amount of time to issue request to
+                      the targets. The internal concurrency structure's setup has
+                      this value as a variable. The actual run time of the test can
+                      be longer than specified due to the responses delay. Use 0 for
+                      an infinite attack.
+                    format: duration
+                    type: string
+                  format:
+                    description: 'Specifies the format of the target provided in the
+                      targets file, see below. Valid values are: json and http.'
+                    enum:
+                    - json
+                    - http
+                    type: string
+                  h2c:
+                    description: Specifies that HTTP2 requests are to be sent over
+                      TCP without TLS encryption.
+                    type: boolean
+                  headersConfigMap:
+                    description: Specifies a config map containing request headers
+                      to be used in all targets defined. The config map should contain
+                      a single file named headers.txt. You can specify as many as
+                      needed by writing a new header on a new line.
+                    type: string
+                  http2:
+                    description: Specifies whether to enable HTTP/2 requests to servers
+                      which support it.
+                    type: boolean
+                  insecure:
+                    description: Specifies whether to ignore invalid server TLS certificates.
+                    type: boolean
+                  keepAlive:
+                    description: Specifies whether to reuse TCP connections between
+                      HTTP requests (defaults to true).
+                    type: boolean
+                  keySecret:
+                    description: Specifies the secret containing the PEM encoded TLS
+                      client certificate private key file to be used with HTTPS requests.
+                      The secret should contain a single file named client.key.
+                    type: string
+                  lazy:
+                    description: Specifies whether to read the input targets lazily
+                      instead of eagerly.
+                    type: boolean
+                  maxBody:
+                    description: Specifies the maximum number of bytes to capture
+                      from the body of each response. Remaining unread bytes will
+                      be fully read but discarded. [-1 = no limit] (defaults to -1).
+                    type: integer
+                  maxWorkers:
+                    description: MaxWorkers specifies the Maximum number of workers,
+                      i.e. goroutines (defaults to 18446744073709551615).
+                    type: integer
+                  name:
+                    description: Specifies the name of the attack to be recorded in
+                      responses.
+                    type: string
+                  proxyHeader:
+                    description: Specifies the Proxy CONNECT header.
+                    type: string
+                  rate:
+                    description: Specifies the request rate per time unit to issue
+                      against the targets. 0 or infinity means vegeta will send requests
+                      as fast as possible. Use together with MaxWorkers to model a
+                      fixed set of concurrent users sending requests serially (i.e.
+                      waiting for a response before sending the next request).Defaults
+                      to 50/1s.
+                    type: string
+                  redirects:
+                    description: Specifies the max number of redirects followed on
+                      each request. The default is 10. When the value is -1, redirects
+                      are not followed but the response is marked as successful.
+                    type: integer
+                  rootCertsConfigMap:
+                    description: 'Specifies a config map containing the trusted TLS
+                      root CAs certificate files If unspecified, the default system
+                      CAs certificates will be used. The key for the file should be
+                      named: ca-bundle.crt The file should be named: tls-ca-bundle.pem
+                      With OpenShift this config map can get automatically populated
+                      by configuring cluster-wide trusted CA certificates and setting
+                      the following label to the empty config map: config.openshift.io/inject-trusted-cabundle=true,
+                      whose name is set into this field.'
+                    type: string
+                  target:
+                    description: Target refers to the target endpoint for the load
+                      testing. For multiple targets use TargetsConfigMap.
+                    type: string
+                  targetsConfigMap:
+                    description: Specifies a config map containing the file from which
+                      to read targets. The config map should contain a single file
+                      named targets with the format as extension, i.e. targets.json.
+                      See the format section to learn about the different target formats.
+                    type: string
+                  timeout:
+                    description: Specifies the timeout for each request. The default
+                      is 0 which disables timeouts.
+                    format: duration
+                    type: string
+                  workers:
+                    description: Specifies the initial number of workers, i.e. goroutines,
+                      used in the attack. It defaults to 10. The actual number of
+                      workers will increase if necessary in order to sustain the requested
+                      rate, unless it'd go beyond MaxWorkers.
+                    type: integer
+                type: object
+              replicas:
+                description: Specifies the number of pods running the attack. The
+                  attack as specified above will be run by each pod. This brings an
+                  additional level of parallelism and scalability to what workers
+                  provide.
+                type: integer
+              report:
+                description: Specifies the report parameters.
+                properties:
+                  buckets:
+                    description: 'Buckets defines the histogram buckets, e.g.: "[0,1ms,10ms]".'
+                    type: string
+                  every:
+                    description: The report is written to Output at Every given interval
+                      (e.g 100ms). The default of 0 means the report will only be
+                      written after all results have been processed.
+                    format: duration
+                    type: string
+                  outputClaim:
+                    description: Specifies the output location. The value should match
+                      a persistent volume claim or an object bucket claim name. In
+                      case of PVC the name of the result file is based on the attack
+                      name and a timestamp. For now volumes are to be RWM in case
+                      of a distributed attack as they get mounted by each pod.
+                    type: string
+                  outputType:
+                    description: Specifies the type of storage to use for the output.
+                      Valid values are stdout, pvc, obc. Stdout is the default.
+                    enum:
+                    - stdout
+                    - pvc
+                    - obc
+                    type: string
+                  type:
+                    description: Type defines the report type to generate. Valid values
+                      are text, json, hist, hdrplot. It defaults to "text".
+                    enum:
+                    - text
+                    - json
+                    - hist
+                    - hdrplot
+                    type: string
+                type: object
+              resources:
+                description: Specifies the resource requests and limits of the vegeta
+                  container.
+                properties:
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources
+                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute
+                      resources required. If Requests is omitted for a container,
+                      it defaults to Limits if that is explicitly specified, otherwise
+                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                    type: object
+                type: object
+            required:
+            - attack
+            type: object
+          status:
+            description: VegetaStatus defines the observed state of Vegeta
+            properties:
+              active:
+                description: A list of pointers to currently running pods.
+                items:
+                  description: 'ObjectReference contains enough information to let
+                    you inspect or modify the referred object. --- New uses of this
+                    type are discouraged because of difficulty describing its usage
+                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    which are not generally honored.  For instance, ResourceVersion
+                    and FieldPath are both very rarely valid in actual usage.  2.
+                    Invalid usage help.  It is impossible to add specific help for
+                    individual usage.  In most embedded usages, there are particular     restrictions
+                    like, "must refer only to types A and B" or "UID not honored"
+                    or "name must be restricted".     Those cannot be well described
+                    when embedded.  3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen.  4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity     during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple     and the version of the actual
+                    struct is irrelevant.  5. We cannot easily change it.  Because
+                    this type is embedded in many locations, updates to this type     will
+                    affect numerous schemas.  Don''t make new APIs embed an underspecified
+                    API type they do not control. Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    .'
+                  properties:
+                    apiVersion:
+                      description: API version of the referent.
+                      type: string
+                    fieldPath:
+                      description: 'If referring to a piece of an object instead of
+                        an entire object, this string should contain a valid JSON/Go
+                        field access statement, such as desiredState.manifest.containers[2].
+                        For example, if the object reference is to a container within
+                        a pod, this would take on a value like: "spec.containers{name}"
+                        (where "name" refers to the name of the container that triggered
+                        the event) or if no container name is specified "spec.containers[2]"
+                        (container with index 2 in this pod). This syntax is chosen
+                        only to have some well-defined way of referencing a part of
+                        an object. TODO: this design is not final and this field is
+                        subject to change in the future.'
+                      type: string
+                    kind:
+                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      type: string
+                    namespace:
+                      description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                      type: string
+                    resourceVersion:
+                      description: 'Specific resourceVersion to which this reference
+                        is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
+                      type: string
+                    uid:
+                      description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
+                      type: string
+                  type: object
+                type: array
+              failed:
+                description: A list of pointers to pods that failed.
+                items:
+                  description: 'ObjectReference contains enough information to let
+                    you inspect or modify the referred object. --- New uses of this
+                    type are discouraged because of difficulty describing its usage
+                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    which are not generally honored.  For instance, ResourceVersion
+                    and FieldPath are both very rarely valid in actual usage.  2.
+                    Invalid usage help.  It is impossible to add specific help for
+                    individual usage.  In most embedded usages, there are particular     restrictions
+                    like, "must refer only to types A and B" or "UID not honored"
+                    or "name must be restricted".     Those cannot be well described
+                    when embedded.  3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen.  4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity     during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple     and the version of the actual
+                    struct is irrelevant.  5. We cannot easily change it.  Because
+                    this type is embedded in many locations, updates to this type     will
+                    affect numerous schemas.  Don''t make new APIs embed an underspecified
+                    API type they do not control. Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    .'
+                  properties:
+                    apiVersion:
+                      description: API version of the referent.
+                      type: string
+                    fieldPath:
+                      description: 'If referring to a piece of an object instead of
+                        an entire object, this string should contain a valid JSON/Go
+                        field access statement, such as desiredState.manifest.containers[2].
+                        For example, if the object reference is to a container within
+                        a pod, this would take on a value like: "spec.containers{name}"
+                        (where "name" refers to the name of the container that triggered
+                        the event) or if no container name is specified "spec.containers[2]"
+                        (container with index 2 in this pod). This syntax is chosen
+                        only to have some well-defined way of referencing a part of
+                        an object. TODO: this design is not final and this field is
+                        subject to change in the future.'
+                      type: string
+                    kind:
+                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      type: string
+                    namespace:
+                      description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                      type: string
+                    resourceVersion:
+                      description: 'Specific resourceVersion to which this reference
+                        is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
+                      type: string
+                    uid:
+                      description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
+                      type: string
+                  type: object
+                type: array
+              succeeded:
+                description: A list of pointers to pods that sucessfully completed.
+                items:
+                  description: 'ObjectReference contains enough information to let
+                    you inspect or modify the referred object. --- New uses of this
+                    type are discouraged because of difficulty describing its usage
+                    when embedded in APIs.  1. Ignored fields.  It includes many fields
+                    which are not generally honored.  For instance, ResourceVersion
+                    and FieldPath are both very rarely valid in actual usage.  2.
+                    Invalid usage help.  It is impossible to add specific help for
+                    individual usage.  In most embedded usages, there are particular     restrictions
+                    like, "must refer only to types A and B" or "UID not honored"
+                    or "name must be restricted".     Those cannot be well described
+                    when embedded.  3. Inconsistent validation.  Because the usages
+                    are different, the validation rules are different by usage, which
+                    makes it hard for users to predict what will happen.  4. The fields
+                    are both imprecise and overly precise.  Kind is not a precise
+                    mapping to a URL. This can produce ambiguity     during interpretation
+                    and require a REST mapping.  In most cases, the dependency is
+                    on the group,resource tuple     and the version of the actual
+                    struct is irrelevant.  5. We cannot easily change it.  Because
+                    this type is embedded in many locations, updates to this type     will
+                    affect numerous schemas.  Don''t make new APIs embed an underspecified
+                    API type they do not control. Instead of using this type, create
+                    a locally provided and used type that is well-focused on your
+                    reference. For example, ServiceReferences for admission registration:
+                    https://github.com/kubernetes/api/blob/release-1.17/admissionregistration/v1/types.go#L533
+                    .'
+                  properties:
+                    apiVersion:
+                      description: API version of the referent.
+                      type: string
+                    fieldPath:
+                      description: 'If referring to a piece of an object instead of
+                        an entire object, this string should contain a valid JSON/Go
+                        field access statement, such as desiredState.manifest.containers[2].
+                        For example, if the object reference is to a container within
+                        a pod, this would take on a value like: "spec.containers{name}"
+                        (where "name" refers to the name of the container that triggered
+                        the event) or if no container name is specified "spec.containers[2]"
+                        (container with index 2 in this pod). This syntax is chosen
+                        only to have some well-defined way of referencing a part of
+                        an object. TODO: this design is not final and this field is
+                        subject to change in the future.'
+                      type: string
+                    kind:
+                      description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                      type: string
+                    namespace:
+                      description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
+                      type: string
+                    resourceVersion:
+                      description: 'Specific resourceVersion to which this reference
+                        is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
+                      type: string
+                    uid:
+                      description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
+                      type: string
+                  type: object
+                type: array
+              type:
+                description: 'Phase of the processing of the Vegeta request. Possible
+                  values are: pending (no pod started), running (not all pods have
+                  terminated yet and no pod has failed), failed (one of the pod has
+                  failed), succeeded (all pods have successfully terminated but report
+                  has not been generated yet), completed (all pods have successfully
+                  terminated and report has been generated)'
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
