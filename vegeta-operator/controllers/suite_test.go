@@ -17,11 +17,15 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,9 +42,23 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
+const (
+	TestNs = "test-vegeta"
+)
+
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var testNs = &v1.Namespace{
+	TypeMeta: metav1.TypeMeta{
+		APIVersion: "v1",
+		Kind:       "Namespace",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name: TestNs,
+	},
+	Spec: v1.NamespaceSpec{},
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -54,8 +72,16 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+	ctx := context.Background()
+	t := true
+	if os.Getenv("TEST_USE_EXISTING_CLUSTER") == "true" {
+		testEnv = &envtest.Environment{
+			UseExistingCluster: &t,
+		}
+	} else {
+		testEnv = &envtest.Environment{
+			CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+		}
 	}
 
 	cfg, err := testEnv.Start()
@@ -64,7 +90,6 @@ var _ = BeforeSuite(func(done Done) {
 
 	err = vegetav1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
-
 	// +kubebuilder:scaffold:scheme
 
 	// Replaced by the code below where the vegeta controller is started
@@ -74,9 +99,9 @@ var _ = BeforeSuite(func(done Done) {
 
 	options := ctrl.Options{
 		Scheme:                 scheme.Scheme,
-		MetricsBindAddress:     "8080",
+		MetricsBindAddress:     ":8080",
 		Port:                   9443,
-		HealthProbeBindAddress: "8081",
+		HealthProbeBindAddress: ":8081",
 		LeaderElection:         false,
 		LeaderElectionID:       "2283d09e.testing.io",
 		Namespace:              "vegeta",
@@ -100,12 +125,15 @@ var _ = BeforeSuite(func(done Done) {
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
-	// TODO: I am not sure that this needs to be asynchronous and requires this done channel
+	Expect(k8sClient.Create(ctx, testNs)).Should(Succeed())
+
 	close(done)
 }, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	ctx := context.Background()
+	Expect(k8sClient.Delete(ctx, testNs)).Should(Succeed())
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })

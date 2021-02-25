@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package operator contains the logic for the configuration of the operator.
 package operator
 
 import "strings"
@@ -27,18 +28,18 @@ type Config struct {
 	Labels               Labels
 }
 
-// Labels to be added to all resources created by the operator.
+// Labels defines the labels to be added to all resources created by the operator.
 type Labels struct {
 	LabelsString string
 	LabelsMap    map[string]string
 }
 
-// Implement the flag.Value interface.
+// String implements the flag.Value interface.
 func (labels *Labels) String() string {
 	return labels.LabelsString
 }
 
-// Merge labels create a new map with labels merged.
+// Merge creates a new map with labels merged.
 func (labels *Labels) Merge(otherLabels map[string]string) map[string]string {
 	mergedLabels := map[string]string{}
 

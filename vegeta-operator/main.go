@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package main contains the logic for initialising, configuring, starting and registering the controller.
 package main
 
 import (

@@ -14,6 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package controllers contains all the logic for handling vegeta custom resources.
+// It implements a reconciliation loop so that test pod(s) get launched and results collected when a new vegeta resource is created.
+// Vegeta resources are not expected to be modified.
+// TODO: describe parallelisation and how results get retrieved.
 package controllers
 
 import (
@@ -56,19 +60,18 @@ var (
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
-//
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Vegeta object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For a Vegeta resource there should be one or many matching pods. TODO: Describe what is used for matching.
-// Once the pod has terminated the Vegeta resource is updated with the result.
-//
-// Using bare pods here rather than jobs. As test executions often require multiple things to be coordinated to get meaningfull results having a mechanism to restart pods when they have not been successful does not bring benefit. In such a scenario it is better to fail fast and allow the user to start again.
 func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vegeta", req.NamespacedName)
 	reqLogger.Info("Starting reconciliation")
+	// TODO(user): Modify the Reconcile function to compare the state specified by
+	// the Vegeta object against the actual cluster state, and then
+	// perform operations to make the cluster state reflect the state specified by
+	// the user.
+	//
+	// For a Vegeta resource there should be one or many matching pods. TODO: Describe what is used for matching.
+	// Once the pod has terminated the Vegeta resource is updated with the result.
+	//
+	// Using bare pods here rather than jobs. As test executions often require multiple things to be coordinated to get meaningfull results having a mechanism to restart pods when they have not been successful does not bring benefit. In such a scenario it is better to fail fast and allow the user to start again.
 
 	// Fetch the Vegeta instance
 	vegeta := &vegetav1alpha1.Vegeta{}
