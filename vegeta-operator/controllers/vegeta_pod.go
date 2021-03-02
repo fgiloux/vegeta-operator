@@ -22,6 +22,7 @@ import (
 	vegetav1alpha1 "github.com/fgiloux/vegeta-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -35,7 +36,7 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 	volumes, mounts := getAPVolumesAndMounts(v)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: v.Name,
+			GenerateName: v.Name + "-",
 			Namespace:    v.Namespace,
 			Labels:       r.Labels.LabelsMap,
 		},
@@ -53,7 +54,8 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 			Volumes:       volumes,
 		},
 	}
-
+	// Set Vegeta instance as the owner and controller
+	ctrl.SetControllerReference(v, pod, r.Scheme)
 	return pod
 }
 
@@ -151,7 +153,7 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) []string {
 
 	// In case of results being sent to standard ouptut the report should be processed immediately. There is no way to process it afterwards.
 	// TODO: use the enum
-	if veg.Spec.Report.OutputType == "" || veg.Spec.Report.OutputType == vegetav1alpha1.StdoutOutput {
+	if veg.Spec.Report == nil || veg.Spec.Report.OutputType == "" || veg.Spec.Report.OutputType == vegetav1alpha1.StdoutOutput {
 		cmd = append(cmd, "|")
 		cmd = append(cmd, getReportCmd(veg)...)
 	}
@@ -168,21 +170,21 @@ func getReportCmd(veg *vegetav1alpha1.Vegeta) []string {
 	cmd := []string{}
 	cmd = append(cmd, "vegeta", "report")
 
-	if veg.Spec.Report.Buckets != "" {
+	if veg.Spec.Report != nil && veg.Spec.Report.Buckets != "" {
 		cmd = append(cmd, "-buckets", veg.Spec.Report.Buckets)
 	}
 
-	if veg.Spec.Report.Every != "" {
+	if veg.Spec.Report != nil && veg.Spec.Report.Every != "" {
 		cmd = append(cmd, "-every", veg.Spec.Report.Every)
 	}
 
-	if veg.Spec.Report.OutputType != "" && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType != "" && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
 		// TODO: I am only generating reports in binary format. I may need to encode them in one of the available formats: (gob | json | csv)
 		cmd = append(cmd, "-output")
 		cmd = append(cmd, getReportFileName(veg)...)
 	}
 
-	if veg.Spec.Report.Type.String() != "" {
+	if veg.Spec.Report != nil && veg.Spec.Report.Type.String() != "" {
 		cmd = append(cmd, "-type", veg.Spec.Report.Type.String())
 	}
 	return cmd
@@ -244,13 +246,6 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 			MountPath: resultsPath,
 		},
 	}
-
-	volumes = append(volumes, corev1.Volume{
-		Name: "vegeta-results",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
 
 	return volumes, mounts
 }

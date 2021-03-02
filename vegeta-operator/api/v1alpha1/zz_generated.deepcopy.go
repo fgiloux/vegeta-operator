@@ -21,7 +21,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -145,17 +144,17 @@ func (in *VegetaStatus) DeepCopyInto(out *VegetaStatus) {
 	*out = *in
 	if in.Active != nil {
 		in, out := &in.Active, &out.Active
-		*out = make([]v1.ObjectReference, len(*in))
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 	if in.Failed != nil {
 		in, out := &in.Failed, &out.Failed
-		*out = make([]v1.ObjectReference, len(*in))
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 	if in.Succeeded != nil {
 		in, out := &in.Succeeded, &out.Succeeded
-		*out = make([]v1.ObjectReference, len(*in))
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 }

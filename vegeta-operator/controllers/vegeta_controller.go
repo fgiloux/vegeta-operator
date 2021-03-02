@@ -25,13 +25,12 @@ import (
 	"reflect"
 
 	"github.com/fgiloux/vegeta-operator/operator"
-	"github.com/prometheus/common/log"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	ref "k8s.io/client-go/tools/reference"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -49,7 +48,7 @@ type VegetaReconciler struct {
 
 var (
 	podOwnerKey = ".metadata.controller"
-	apiGVStr    = corev1.SchemeGroupVersion.String()
+	apiGVStr    = vegetav1alpha1.GroupVersion.String()
 )
 
 // +kubebuilder:rbac:groups=vegeta.testing.io,resources=vegeta,verbs=get;list;watch;create;update;patch;delete
@@ -61,8 +60,8 @@ var (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
 func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("vegeta", req.NamespacedName)
-	reqLogger.Info("Starting reconciliation")
+	log := r.Log.WithValues("vegeta", req.NamespacedName)
+	log.V(1).Info("Starting reconciliation")
 	// TODO(user): Modify the Reconcile function to compare the state specified by
 	// the Vegeta object against the actual cluster state, and then
 	// perform operations to make the cluster state reflect the state specified by
@@ -81,7 +80,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			log.Info("Vegeta resource not found. Ignoring since object must be deleted")
+			log.V(1).Info("Vegeta resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -91,7 +90,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	statusChanged := false
 
-	// TODO: A podOwnerKey field is added to the cached pod objects. This key references the owning controller and functions as the index. I will need to configure the manager to actually index this field.
+	// podOwnerKey field is added to the cached pod objects. This key references the owning controller and functions as the index.
 
 	var childPods corev1.PodList
 
@@ -102,48 +101,45 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Create new pods if required
-	for i := uint(len(childPods.Items)); i <= vegeta.Spec.Replicas; i++ {
+	for i := uint(len(childPods.Items)); i < vegeta.Spec.Replicas; i++ {
 		pod := r.aPod4Attack(vegeta)
-		log.Info("pod created", "pod", pod)
+		if err = r.Create(ctx, pod); err != nil {
+			log.Error(err, "Failed to create new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
+			return ctrl.Result{}, err
+		}
+
+		log.V(0).Info("created", "pod", pod)
 	}
 
 	// Classify the pods
 	// PodStatus.phase: Pending, Running, Succeeded, Failed, Unknown
-	var activePods []corev1.ObjectReference
-	var successfulPods []corev1.ObjectReference
-	var failedPods []corev1.ObjectReference
-
-	addPod := func(pod *corev1.Pod, podList []corev1.ObjectReference) {
-		podRef, err := ref.GetReference(r.Scheme, pod)
-		if err != nil {
-			log.Error(err, "unable to make reference to pod", "pod", pod)
-			return
-		}
-		podList = append(podList, *podRef)
-	}
+	var activePods []string
+	var successfulPods []string
+	var failedPods []string
 
 	for i, pod := range childPods.Items {
 		switch pod.Status.Phase {
 		case corev1.PodFailed:
-			addPod(&childPods.Items[i], failedPods)
+			failedPods = append(failedPods, childPods.Items[i].Name)
 		case corev1.PodSucceeded:
-			addPod(&childPods.Items[i], successfulPods)
+			successfulPods = append(successfulPods, childPods.Items[i].Name)
 		default:
-			addPod(&childPods.Items[i], activePods)
+			activePods = append(activePods, childPods.Items[i].Name)
 		}
 	}
 
-	applyChanges := func(newPodList []corev1.ObjectReference, vegetaPodList []corev1.ObjectReference) {
-		if !reflect.DeepEqual(newPodList, vegetaPodList) {
-			vegetaPodList = newPodList
+	applyChanges := func(newPodList *[]string, vegetaPodList *[]string) {
+		if !reflect.DeepEqual(*newPodList, *vegetaPodList) {
+			*vegetaPodList = *newPodList
 			statusChanged = true
 		}
 	}
-	applyChanges(activePods, vegeta.Status.Active)
-	applyChanges(successfulPods, vegeta.Status.Succeeded)
-	applyChanges(failedPods, vegeta.Status.Failed)
-
-	log.Debug("pod count", "active pods", len(vegeta.Status.Active), "successful pods", len(vegeta.Status.Succeeded), "failed jobs", len(vegeta.Status.Failed))
+	applyChanges(&activePods, &vegeta.Status.Active)
+	applyChanges(&successfulPods, &vegeta.Status.Succeeded)
+	applyChanges(&failedPods, &vegeta.Status.Failed)
+	log.V(1).Info("pod count", "total", len(childPods.Items))
+	log.V(1).Info("pod count", "active pods", len(activePods), "successful pods", len(successfulPods), "failed jobs", len(failedPods))
+	log.V(1).Info("pod count", "active pods", len(vegeta.Status.Active), "successful pods", len(vegeta.Status.Succeeded), "failed jobs", len(vegeta.Status.Failed))
 
 	// Update the vegeta status
 	if statusChanged {
@@ -174,7 +170,27 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VegetaReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	log := r.Log.WithValues("vegeta", "test-vegeta")
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, podOwnerKey, func(rawObj client.Object) []string {
+		// grab the job object, extract the owner...
+		pod := rawObj.(*corev1.Pod)
+		owner := metav1.GetControllerOf(pod)
+		log.V(1).Info("retrieving owner", "owner", owner)
+		if owner == nil {
+			return nil
+		}
+		// ...make sure it's a Vegeta...
+		if owner.APIVersion != apiGVStr || owner.Kind != "Vegeta" {
+			return nil
+		}
+
+		// ...and if so, return it
+		return []string{owner.Name}
+	}); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vegetav1alpha1.Vegeta{}).
+		Owns(&corev1.Pod{}).
 		Complete(r)
 }

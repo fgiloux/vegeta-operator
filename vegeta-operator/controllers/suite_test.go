@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	vegetav1alpha1 "github.com/fgiloux/vegeta-operator/api/v1alpha1"
+	operator "github.com/fgiloux/vegeta-operator/operator"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -69,6 +71,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
+
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
@@ -104,16 +107,23 @@ var _ = BeforeSuite(func(done Done) {
 		HealthProbeBindAddress: ":8081",
 		LeaderElection:         false,
 		LeaderElectionID:       "2283d09e.testing.io",
-		Namespace:              "vegeta",
+		Namespace:              TestNs,
 	}
 	// TODO: Controller should also be tested with multiple namespaces
 
 	k8sManager, err := ctrl.NewManager(cfg, options)
 	Expect(err).ToNot(HaveOccurred())
 
+	labels := &operator.Labels{}
+	labels.Set("test=controllers.vegeta")
+
 	err = (&VegetaReconciler{
 		Client: k8sManager.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Vegeta"),
+		// TODO: make image configurable
+		Image:  "quay.io/fgiloux/vegeta:12.8.3-1",
+		Labels: *labels,
+		Scheme: scheme.Scheme,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

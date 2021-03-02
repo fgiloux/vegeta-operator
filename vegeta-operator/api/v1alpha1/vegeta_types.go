@@ -117,7 +117,7 @@ type AttackSpec struct {
 	// +optional
 	Name string `json:"name,omitempty"`
 
-	// TODO: I am not sure it is a good idea to have it configurable (at least in a first iteration). For now there the output is directly piped into the result processing command.
+	// TODO: I am not sure it is a good idea to have it configurable (at least in a first iteration). For now the output is directly piped into the result processing command.
 	// Specifies the output file to which the binary results will be written to. Made to be piped to the report command input. Defaults to stdout.
 	//
 	// optional
@@ -206,7 +206,7 @@ type ReportSpec struct {
 	Every string `json:"every,omitempty"`
 
 	// Specifies the output location. The value should match a persistent volume claim or an object bucket claim name.
-	// In case of PVC the name of the result file is based on the attack name and a timestamp. For now volumes are to be RWM in case of a distributed attack as they get mounted by each pod.
+	// In case of PVC the name of the result file is based on the attack, pod name and a timestamp. For now volumes are to be RWM in case of a distributed attack as they get mounted by each pod.
 	//
 	// +optional
 	OutputClaim string `json:"outputClaim,omitempty"`
@@ -255,17 +255,17 @@ type VegetaStatus struct {
 
 	// TODO: Ideally this would reflect the result of the test execution.
 
-	// A list of pointers to currently running pods.
+	// Active contains the names of currently running pods.
 	// +optional
-	Active []corev1.ObjectReference `json:"active,omitempty"`
+	Active []string `json:"active,omitempty"`
 
-	// A list of pointers to pods that failed.
+	// Failed contains the names of pods that failed.
 	// +optional
-	Failed []corev1.ObjectReference `json:"failed,omitempty"`
+	Failed []string `json:"failed,omitempty"`
 
-	// A list of pointers to pods that sucessfully completed.
+	// Succeeded contains the names of pods that sucessfully completed.
 	// +optional
-	Succeeded []corev1.ObjectReference `json:"succeeded,omitempty"`
+	Succeeded []string `json:"succeeded,omitempty"`
 
 	// Phase of the processing of the Vegeta request. Possible values are: pending (no pod started), running (not all pods have terminated yet and no pod has failed), failed (one of the pod has failed), succeeded (all pods have successfully terminated but report has not been generated yet), completed (all pods have successfully terminated and report has been generated)
 	Phase PhaseEnum `json:"type,omitempty"`
