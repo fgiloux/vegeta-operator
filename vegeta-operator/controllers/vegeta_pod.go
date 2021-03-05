@@ -33,6 +33,7 @@ const (
 
 // aPod4Attack generates the definition of the attack pod
 func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
+	immediate := int64(0)
 	volumes, mounts := getAPVolumesAndMounts(v)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -50,8 +51,10 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 				// TODO: I am not sure this needs to be made configurable. What is defined in the image should be just fine.
 				WorkingDir: resultsPath,
 			}},
-			RestartPolicy: "Never",
-			Volumes:       volumes,
+			RestartPolicy:                 "Never",
+			Volumes:                       volumes,
+			SecurityContext:               &corev1.PodSecurityContext{},
+			TerminationGracePeriodSeconds: &immediate,
 		},
 	}
 	// Set Vegeta instance as the owner and controller

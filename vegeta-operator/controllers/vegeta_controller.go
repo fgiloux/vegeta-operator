@@ -22,6 +22,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/fgiloux/vegeta-operator/operator"
@@ -84,8 +85,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get Vegeta resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("Failed to get Vegeta resource: %v", err)
 	}
 
 	statusChanged := false
@@ -96,8 +96,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// Find the list of pods
 	if err := r.List(ctx, &childPods, client.InNamespace(req.Namespace), client.MatchingFields{podOwnerKey: req.Name}); err != nil {
-		log.Error(err, "unable to list child pods")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("List Vegeta's child pods: %v", err)
 	}
 
 	// Create new pods if required
@@ -105,7 +104,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		pod := r.aPod4Attack(vegeta)
 		if err = r.Create(ctx, pod); err != nil {
 			log.Error(err, "Failed to create new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("Failed to create new Pod: %v", err)
 		}
 
 		log.V(0).Info("created", "pod", pod)
@@ -137,8 +136,6 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	applyChanges(&activePods, &vegeta.Status.Active)
 	applyChanges(&successfulPods, &vegeta.Status.Succeeded)
 	applyChanges(&failedPods, &vegeta.Status.Failed)
-	log.V(1).Info("pod count", "total", len(childPods.Items))
-	log.V(1).Info("pod count", "active pods", len(activePods), "successful pods", len(successfulPods), "failed jobs", len(failedPods))
 	log.V(1).Info("pod count", "active pods", len(vegeta.Status.Active), "successful pods", len(vegeta.Status.Succeeded), "failed jobs", len(vegeta.Status.Failed))
 
 	// Update the vegeta status
@@ -154,8 +151,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			// TODO: I need to implement report processing that will bring to the CompletedPhase
 		}
 		if err := r.Status().Update(ctx, vegeta); err != nil {
-			log.Error(err, "unable to update Vegeta status")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("Unable to update Vegeta status: %v", err)
 		}
 	}
 
@@ -187,7 +183,7 @@ func (r *VegetaReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// ...and if so, return it
 		return []string{owner.Name}
 	}); err != nil {
-		return err
+		return fmt.Errorf("SetupWithManager: %v", err)
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vegetav1alpha1.Vegeta{}).

@@ -27,6 +27,7 @@ import (
 	vegetav1alpha1 "github.com/fgiloux/vegeta-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -41,8 +42,8 @@ var _ = Describe("Vegeta controller", func() {
 		interval = time.Millisecond * 250
 	)
 
-	Context("When updating Vegeta Status", func() {
-		It("Should increase Vegeta.Status.Active count when new Pods are created", func() {
+	Context("When a successful attack", func() {
+		It("Should update Vegeta.Status", func() {
 			By("Creating a new Vegeta resource")
 			ctx := context.Background()
 			vegeta := newVegeta(VegetaName)
@@ -63,10 +64,40 @@ var _ = Describe("Vegeta controller", func() {
 			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
 			Expect(createdVegeta.Status.Phase).Should(Equal(v1alpha1.RunningPhase))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
-		})
 
-		It("Should increase Vegeta.Status.Succeeded count when Pods successfully completed", func() {
-			By("Checking the number of pods that successfully completed")
+			By("Completion")
+			// TODO: I should use eventually instead of the sleep
+			// ACTUALLY, IN KUBEBUILDER DOC THEY CREATE THE JOB IN THE TEST CODE
+			// AND ATTACH IT TO THE CRONJOB WHOSE CONTROLLER HAS BEEN CREATED
+			// THAT'S PROBABLY WHAT I NEED TO DO.
+			// IN THAT CASE I MAY DECIDE TO REORGANISE THE TESTS
+			createdPod := &corev1.Pod{}
+			podLookupKey := types.NamespacedName{Name: createdVegeta.Status.Active[0], Namespace: TestNs}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, podLookupKey, createdPod)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			createdPod.Status.Phase = corev1.PodSucceeded
+			Expect(k8sClient.Status().Update(ctx, createdPod)).Should(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			msg = fmt.Sprintf("Vegeta phase: %s\n", createdVegeta.Status.Phase)
+			GinkgoWriter.Write([]byte(msg))
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.SucceededPhase))
+			Expect(len(createdVegeta.Status.Active)).Should(Equal(0))
+			Expect(len(createdVegeta.Status.Succeeded)).Should(Equal(1))
 		})
 
 		It("Should increase Vegeta.Status.Failed count when Pods failed", func() {
