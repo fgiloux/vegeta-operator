@@ -136,7 +136,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	applyChanges(&activePods, &vegeta.Status.Active)
 	applyChanges(&successfulPods, &vegeta.Status.Succeeded)
 	applyChanges(&failedPods, &vegeta.Status.Failed)
-	log.V(1).Info("pod count", "active pods", len(vegeta.Status.Active), "successful pods", len(vegeta.Status.Succeeded), "failed jobs", len(vegeta.Status.Failed))
+	log.V(1).Info("pod count", "active pods", len(vegeta.Status.Active), "successful pods", len(vegeta.Status.Succeeded), "failed pods", len(vegeta.Status.Failed))
 
 	// Update the vegeta status
 	if statusChanged {

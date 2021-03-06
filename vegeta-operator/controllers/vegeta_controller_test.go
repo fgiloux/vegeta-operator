@@ -42,9 +42,9 @@ var _ = Describe("Vegeta controller", func() {
 		interval = time.Millisecond * 250
 	)
 
-	Context("When a successful attack", func() {
+	Context("When an attack is performed with a successful pod", func() {
 		It("Should update Vegeta.Status", func() {
-			By("Creating a new Vegeta resource")
+			By("Creation")
 			ctx := context.Background()
 			vegeta := newVegeta(VegetaName)
 			Expect(k8sClient.Create(ctx, vegeta)).Should(Succeed())
@@ -54,23 +54,14 @@ var _ = Describe("Vegeta controller", func() {
 			createdVegeta := &vegetav1alpha1.Vegeta{}
 
 			// Creation may not immediately happen.
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, vLookupKey, createdVegeta)
-				if err != nil {
-					return false
-				}
-				return true
-			}, timeout, interval).Should(BeTrue())
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
 			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
-			Expect(createdVegeta.Status.Phase).Should(Equal(v1alpha1.RunningPhase))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
 
 			By("Completion")
-			// TODO: I should use eventually instead of the sleep
-			// ACTUALLY, IN KUBEBUILDER DOC THEY CREATE THE JOB IN THE TEST CODE
-			// AND ATTACH IT TO THE CRONJOB WHOSE CONTROLLER HAS BEEN CREATED
-			// THAT'S PROBABLY WHAT I NEED TO DO.
-			// IN THAT CASE I MAY DECIDE TO REORGANISE THE TESTS
 			createdPod := &corev1.Pod{}
 			podLookupKey := types.NamespacedName{Name: createdVegeta.Status.Active[0], Namespace: TestNs}
 			Eventually(func() bool {
@@ -90,30 +81,99 @@ var _ = Describe("Vegeta controller", func() {
 				}
 				return true
 			}, timeout, interval).Should(BeTrue())
-			msg = fmt.Sprintf("Vegeta phase: %s\n", createdVegeta.Status.Phase)
-			GinkgoWriter.Write([]byte(msg))
 			Eventually(func() v1alpha1.PhaseEnum {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
 			}, timeout, interval).Should(Equal(v1alpha1.SucceededPhase))
+			msg = fmt.Sprintf("Vegeta phase: %s\n", createdVegeta.Status.Phase)
+			GinkgoWriter.Write([]byte(msg))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(0))
 			Expect(len(createdVegeta.Status.Succeeded)).Should(Equal(1))
 		})
+	})
+	Context("When an attack is performed with a successful and an unsuccessful pod", func() {
+		It("Should update Vegeta.Status", func() {
+			By("Creation")
+			ctx := context.Background()
+			vegeta := newVegeta(VegetaName + "-fail")
+			vegeta.Spec.Replicas = 2
+			Expect(k8sClient.Create(ctx, vegeta)).Should(Succeed())
+			msg := fmt.Sprintf("Name: %s, Namespage: %s \n", vegeta.Name, vegeta.Namespace)
+			GinkgoWriter.Write([]byte(msg))
+			vLookupKey := types.NamespacedName{Name: vegeta.Name, Namespace: TestNs}
+			createdVegeta := &vegetav1alpha1.Vegeta{}
 
-		It("Should increase Vegeta.Status.Failed count when Pods failed", func() {
-			By("Checking the number of pods that failed")
-		})
+			// Creation may not immediately happen.
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(2)))
+			Expect(len(createdVegeta.Status.Active)).Should(Equal(2))
+			for _, podName := range createdVegeta.Status.Active {
+				msg := fmt.Sprintf("Active pods: %s \n", podName)
+				GinkgoWriter.Write([]byte(msg))
+			}
 
-		It("Should have a Vegeta.Status.Phase set to FailedPhase when Pods failed", func() {
-			By("Checking whether a pod failed")
-		})
+			By("Failure")
+			createdPod := &corev1.Pod{}
+			podLookupKey := types.NamespacedName{Name: createdVegeta.Status.Active[0], Namespace: TestNs}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, podLookupKey, createdPod)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
 
-		It("Should have a Vegeta.Status.Phase set to RunningPhase when no Pod failed and Pods are still running", func() {
-			By("Checking the number of running and failed pods")
-		})
+			createdPod.Status.Phase = corev1.PodFailed
+			Expect(k8sClient.Status().Update(ctx, createdPod)).Should(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.FailedPhase))
+			msg = fmt.Sprintf("Vegeta phase: %s\n", createdVegeta.Status.Phase)
+			GinkgoWriter.Write([]byte(msg))
+			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
+			Expect(len(createdVegeta.Status.Succeeded)).Should(Equal(0))
+			Expect(len(createdVegeta.Status.Failed)).Should(Equal(1))
 
-		It("Should have a Vegeta.Status.Phase set to SucceededPhase when all Pods successfully completed", func() {
-			By("Checking that the total number of pods equals the number of successful ones")
+			// A second successful pod should NOT impact the status
+			By("Success after Failure")
+			podLookupKey = types.NamespacedName{Name: createdVegeta.Status.Active[0], Namespace: TestNs}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, podLookupKey, createdPod)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			createdPod.Status.Phase = corev1.PodSucceeded
+			Expect(k8sClient.Status().Update(ctx, createdPod)).Should(Succeed())
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			Eventually(func() int {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return len(createdVegeta.Status.Succeeded)
+			}, timeout, interval).Should(Equal(1))
+			msg = fmt.Sprintf("Vegeta phase: %s\n", createdVegeta.Status.Phase)
+			GinkgoWriter.Write([]byte(msg))
+			Expect(len(createdVegeta.Status.Active)).Should(Equal(0))
+			Expect(len(createdVegeta.Status.Failed)).Should(Equal(1))
+			Expect(createdVegeta.Status.Phase).Should(Equal(v1alpha1.FailedPhase))
 		})
 	})
 })
