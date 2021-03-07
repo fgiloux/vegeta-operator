@@ -63,7 +63,7 @@ func printVersion() {
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	flagset.StringVar(&cfg.MetricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flagset.StringVar(&cfg.MetricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&cfg.ProbeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flagset.BoolVar(&cfg.EnableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
@@ -93,7 +93,7 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: cfg.ProbeAddr,
 		LeaderElection:         cfg.EnableLeaderElection,
-		LeaderElectionID:       "2283d09e.testing.io",
+		LeaderElectionID:       "vegeta-2283d09e.testing.io",
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)

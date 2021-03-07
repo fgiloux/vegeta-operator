@@ -54,6 +54,7 @@ var (
 
 // +kubebuilder:rbac:groups=vegeta.testing.io,resources=vegeta,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=vegeta.testing.io,resources=vegeta/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=vegeta.testing.io,resources=vegeta/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
