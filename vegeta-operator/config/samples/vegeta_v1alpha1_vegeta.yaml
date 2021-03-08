@@ -6,6 +6,6 @@ spec:
   # Add fields here
   attack:
     duration: "10s"
-    rate:     "1s"
-    target:   ""
+    rate:     "5/1s"
+    target:   "https://kubernetes.default.svc.cluster.local:443/healthz"
   replicas: 1
