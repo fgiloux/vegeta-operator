@@ -1,0 +1,28 @@
+= Vegeta operator
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+ifndef::env-github[]
+:imagesdir: ./img
+endif::[]
+:toc:
+:toc-placement!:
+
+== Overview
+
+This repository contains the code for creating an operator managing runs of the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool] on Kubernetes / OpenShift. Inspired by https://github.com/peter-evans/vegeta-docker[Vegeta docker] attacks can be triggered by creating Vegeta https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resources].
+
+It leverages the https://sdk.operatorframework.io/docs/building-operators/golang[operator-sdk].
+
+
+== Installation
+
+== Build from source
+
+== License
+
+The Vegeta operator is under Apache 2.0 license. See the https://github.com/fgiloux/vegeta-operator/blob/main/LICENSE[LICENSE] file for details.
