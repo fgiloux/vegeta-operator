@@ -12,14 +12,35 @@ endif::[]
 :toc:
 :toc-placement!:
 
-Container image for the Vegeta HTTP load testing tool. Inspired by https://github.com/peter-evans/vegeta-docker" 
+Container image for the Vegeta HTTP load testing tool. Inspired by https://github.com/peter-evans/vegeta-docker[Vegeta docker].
+
+This image is also reused by the Vegeta operator.
 
 == Build
 
-$ podman build .
+To build the Vegeta container image from source you will need
+
+- to have a container engine, for instance: docker or podman
+- to clone this repository
+
+[source,shell]
+----
+export USERNAME=<quay-username>
+
+podman build -t quay.io/$USERNAME/vegeta:v0.0.1 .
+
+podman login quay.io/$USERNAME
+podman push IMG=quay.io/$USERNAME/vegeta:v0.0.1
+----
 
 == Run
 
-$ podman...
+[source,shell]
+----
+export USERNAME=<quay-username>
+podman run quay.io/$USERNAME/vegeta:v0.0.1 <vegeta-cmd>
+----
 
-also reused by the Vegeta operator
+== License
+
+The Vegeta container image is under Apache 2.0 license. See the https://github.com/fgiloux/vegeta-operator/blob/main/LICENSE[LICENSE] file for details.

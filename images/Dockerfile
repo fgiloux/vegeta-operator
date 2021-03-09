@@ -24,11 +24,10 @@ LABEL \
 
 RUN set -ex \
  && microdnf install tar gzip ca-certificates \
- && microdnf update \
+#  && microdnf update 
  && microdnf clean all \
  && curl -s -L "https://github.com/tsenart/vegeta/releases/download/v$VEGETA_VERSION/vegeta_${VEGETA_VERSION}_linux_amd64.tar.gz" -o /tmp/vegeta.tar.gz \
  && cd bin \
- && echo "https://github.com/tsenart/vegeta/releases/download/v$VEGETA_VERSION/vegeta_${VEGETA_VERSION}_linux_amd64.tar.gz" \
  && tar xzf /tmp/vegeta.tar.gz \
  && rm /tmp/vegeta.tar.gz \
  && mkdir -p /results /opt/config/credentials \

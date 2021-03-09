@@ -11,6 +11,7 @@ ifndef::env-github[]
 endif::[]
 :toc:
 :toc-placement!:
+:source-highlighter: rouge
 
 == Overview
 
@@ -22,6 +23,29 @@ It leverages the https://sdk.operatorframework.io/docs/building-operators/golang
 == Installation
 
 == Build from source
+
+To build the Vegeta Operator from source you will need
+
+- to have go 1.15 or newer installed
+- to have a container engine, for instance: docker or podman
+- to clone this repository
+- to call the few command lines below.
+
+[source,shell]
+----
+export USERNAME=<quay-username>
+
+export CONTAINER_ENGINE=podman <1>
+
+make docker-build IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1
+
+podman login quay.io/$USERNAME
+make docker-push IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1 <2>
+----
+<1> If you are like me using podman rather than docker
+<2> Push the image into a repository
+
+NOTE: You may also want to build the container image used for running Vegeta. See its https://github.com/fgiloux/vegeta-operator/tree/main/images[readme page].
 
 == License
 
