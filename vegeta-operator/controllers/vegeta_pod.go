@@ -50,11 +50,13 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
-				Image:        image,
-				Name:         containerName,
-				Command:      getAttackCmd(v),
-				Resources:    v.Spec.Resources,
-				VolumeMounts: mounts,
+				Image:           image,
+				ImagePullPolicy: "Always",
+				Name:            containerName,
+				Command:         []string{"/bin/sh"},
+				Args:            []string{"-c", getAttackCmd(v)},
+				Resources:       v.Spec.Resources,
+				VolumeMounts:    mounts,
 				// TODO: I am not sure this needs to be made configurable. What is defined in the image should be just fine.
 				WorkingDir: resultsPath,
 			}},
@@ -70,7 +72,7 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 }
 
 // getAttackCmd assembles an attack command based on the parameters configured in the vegeta resource
-func getAttackCmd(veg *vegetav1alpha1.Vegeta) []string {
+func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 
 	/* TODO
 
@@ -83,127 +85,143 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) []string {
 	   	// - TargetsConfigMap targets.json or targets.http (depending on format)
 	*/
 
-	cmd := []string{}
+	var sb strings.Builder
 	if veg.Spec.Attack.Target != "" {
-		cmd = append(cmd, "echo", `"GET "`+veg.Spec.Attack.Target+`"`, "|")
+		sb.WriteString(`echo GET `)
+		sb.WriteString(veg.Spec.Attack.Target)
+		sb.WriteString(` | `)
 	}
-	cmd = append(cmd, "vegeta", "attack")
+	sb.WriteString("vegeta attack")
+	if veg.Spec.Attack.BodyConfigMap != "" {
+		sb.WriteString(" -body ")
+		sb.WriteString(bodyPath)
+	}
 
 	if veg.Spec.Attack.BodyConfigMap != "" {
-		cmd = append(cmd, "-body", bodyPath)
-	}
-
-	if veg.Spec.Attack.Chunked {
-		cmd = append(cmd, "-chunked")
+		sb.WriteString(" -chunked")
 	}
 
 	if veg.Spec.Attack.Connections > 0 {
-		cmd = append(cmd, "-connections", strconv.Itoa(veg.Spec.Attack.Connections))
+		sb.WriteString(" -connections ")
+		sb.WriteString(strconv.Itoa(veg.Spec.Attack.Connections))
 	}
 
 	if veg.Spec.Attack.Duration != "" {
-		cmd = append(cmd, "-duration", veg.Spec.Attack.Duration)
+		sb.WriteString(" -duration ")
+		sb.WriteString(veg.Spec.Attack.Duration)
 	}
 
 	if veg.Spec.Attack.Format != "" {
-		cmd = append(cmd, "-format", veg.Spec.Attack.Format.String())
+		sb.WriteString(" -format ")
+		sb.WriteString(veg.Spec.Attack.Format.String())
 	}
 
 	if veg.Spec.Attack.H2C {
-		cmd = append(cmd, "-h2c")
+		sb.WriteString(" -h2c")
 	}
 
 	if veg.Spec.Attack.HTTP2 {
-		cmd = append(cmd, "-http2")
+		sb.WriteString(" -http2")
 	}
 
 	if veg.Spec.Attack.Insecure {
-		cmd = append(cmd, "-insecure")
+		sb.WriteString(" -insecure")
 	}
 
 	if veg.Spec.Attack.KeepAlive {
-		cmd = append(cmd, "-keepalive")
+		sb.WriteString(" -keepalive")
 	}
 
 	if veg.Spec.Attack.Lazy {
-		cmd = append(cmd, "-lazy")
+		sb.WriteString(" -lazy")
 	}
 
 	if veg.Spec.Attack.MaxBody != 0 {
-		cmd = append(cmd, "-max-body", strconv.FormatUint(uint64(veg.Spec.Attack.MaxBody), 10))
+		sb.WriteString(" -max-body ")
+		sb.WriteString(strconv.FormatUint(uint64(veg.Spec.Attack.MaxBody), 10))
 	}
 
 	if veg.Spec.Attack.MaxWorkers != 0 {
-		cmd = append(cmd, "-max-workers", strconv.FormatUint(uint64(veg.Spec.Attack.MaxWorkers), 10))
+		sb.WriteString(" -max-workers ")
+		sb.WriteString(strconv.FormatUint(uint64(veg.Spec.Attack.MaxWorkers), 10))
 	}
 
 	if veg.Spec.Attack.Name != "" {
-		cmd = append(cmd, "-name", veg.Spec.Attack.Name)
+		sb.WriteString(" -max-name ")
+		sb.WriteString(veg.Spec.Attack.Name)
 	}
 
 	if veg.Spec.Attack.ProxyHeader != "" {
-		cmd = append(cmd, "-proxy-header", veg.Spec.Attack.ProxyHeader)
+		sb.WriteString(" -proxy-header ")
+		sb.WriteString(veg.Spec.Attack.ProxyHeader)
 	}
 
 	if veg.Spec.Attack.Rate != "" {
-		cmd = append(cmd, "-rate", veg.Spec.Attack.Rate)
+		sb.WriteString(" -rate ")
+		sb.WriteString(veg.Spec.Attack.Rate)
 	}
 
 	if veg.Spec.Attack.Redirects != 0 {
-		cmd = append(cmd, "-redirects", strconv.Itoa(veg.Spec.Attack.Redirects))
+		sb.WriteString(" -redirects ")
+		sb.WriteString(strconv.Itoa(veg.Spec.Attack.Redirects))
 	}
 
 	if veg.Spec.Attack.Timeout != "" {
-		cmd = append(cmd, "-timeout", veg.Spec.Attack.Timeout)
+		sb.WriteString(" -timeout ")
+		sb.WriteString(veg.Spec.Attack.Timeout)
 	}
 
 	if veg.Spec.Attack.Workers > 0 {
-		cmd = append(cmd, "-workers", strconv.FormatUint(uint64(veg.Spec.Attack.Workers), 10))
+		sb.WriteString(" -workers ")
+		sb.WriteString(strconv.FormatUint(uint64(veg.Spec.Attack.Workers), 10))
 	}
 
 	// In case of results being sent to standard ouptut the report should be processed immediately. There is no way to process it afterwards.
 	if veg.Spec.Report == nil || veg.Spec.Report.OutputType == "" || veg.Spec.Report.OutputType == vegetav1alpha1.StdoutOutput {
-		cmd = append(cmd, "|")
-		cmd = append(cmd, getReportCmd(veg)...)
+		sb.WriteString(" | ")
+		sb.WriteString(getReportCmd(veg))
 	}
 
 	// TODO:
 	// The report command accepts multiple result files. It'll read and sort them by timestamp before generating reports.
 	// For supporting distributed attacks this means that it is best to process the reports separately.
 	// This will be done by a pod, which gets launched after the attack pods have successfully completed
-	return cmd
+	return sb.String()
 }
 
 // getReportCmd generates the report command  based on the parameters configured in the vegeta resource
-func getReportCmd(veg *vegetav1alpha1.Vegeta) []string {
-	cmd := []string{}
-	cmd = append(cmd, "vegeta", "report")
+func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
+	var sb strings.Builder
+	sb.WriteString("vegeta report")
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Buckets != "" {
-		cmd = append(cmd, "-buckets", veg.Spec.Report.Buckets)
+		sb.WriteString(" -buckets ")
+		sb.WriteString(veg.Spec.Report.Buckets)
 	}
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Every != "" {
-		cmd = append(cmd, "-every", veg.Spec.Report.Every)
+		sb.WriteString(" -every ")
+		sb.WriteString(veg.Spec.Report.Every)
 	}
 
 	if veg.Spec.Report != nil && veg.Spec.Report.OutputType != "" && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
 		// TODO: I am only generating reports in binary format. I may need to encode them in one of the available formats: (gob | json | csv)
-		cmd = append(cmd, "-output")
-		cmd = append(cmd, getReportFileName(veg)...)
+		sb.WriteString(" -output ")
+		sb.WriteString(getReportFileName(veg))
 	}
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Type.String() != "" {
-		cmd = append(cmd, "-type", veg.Spec.Report.Type.String())
+		sb.WriteString(" -type ")
+		sb.WriteString(veg.Spec.Report.Type.String())
 	}
-	return cmd
+	return sb.String()
 }
 
 // getReportFileName generates the name of the report file
-func getReportFileName(veg *vegetav1alpha1.Vegeta) []string {
+func getReportFileName(veg *vegetav1alpha1.Vegeta) string {
 	fname := []string{}
 	fname = append(fname, veg.GetName(), "-$(hostname)-$(date +%s).gob")
-	return fname
+	return veg.GetName() + "-$(hostname)-$(date +%s).gob"
 }
 
 // getAPVolumesAndMounts generates the list of volumes and mounts for the attack pod
