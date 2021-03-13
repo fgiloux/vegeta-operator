@@ -119,10 +119,9 @@ func main() {
 		Log:    ctrl.Log.WithName("controllers").WithName("Vegeta"),
 		Scheme: mgr.GetScheme(),
 		Labels: cfg.Labels,
-		// TODO: make the vegeta image used configurable, similar to labels
-		// this should contain the image digest (using tag for now).
-		// Also the registry (quay.io) should not be specified and I should rely on the cluster configuration to resolve, hence the importance of the digest and not the image tag.
-		Image: "quay.io/fgiloux/vegeta:12.8.3-1",
+		// TODO: The image should be specified by SHA in the CSV file, which will be injected as environment variable.
+		// TODO: I could look at operator conditions (whether I can report operator start failures there, cf OpenShift doc)
+		Image: operator.RetrieveDefaultImg(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Vegeta")
 		os.Exit(1)
@@ -145,7 +144,7 @@ func main() {
 	}
 	setupLog.Info("manager started")
 
-	// TODO look at adding resultas as custom metrics
+	// TODO look at adding results as custom metrics
 	// I should have the registration here in init but the details in a separate file
 	// similar to what has been done with operator.config
 	// https://book.kubebuilder.io/reference/metrics.html#publishing-additional-metrics

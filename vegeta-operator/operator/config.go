@@ -15,7 +15,14 @@ limitations under the License.
 // Package operator contains the logic for the configuration of the operator.
 package operator
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
+
+// Default image if not provided through environment variable
+// TODO: I should use the SHA instead of tag
+const defaultImg = "quay.io/fgiloux/vegeta:12.8.3-1"
 
 // Config defines configuration parameters for the Operator.
 type Config struct {
@@ -64,4 +71,12 @@ func (labels *Labels) Set(value string) error {
 	(*labels).LabelsMap = m
 	(*labels).LabelsString = value
 	return nil
+}
+
+// RetrieveDefaultImg provides the Vegeta image to use for attacks
+func RetrieveDefaultImg() string {
+	if envImg := strings.TrimSpace(os.Getenv("VEGETA_IMAGE")); envImg != "" {
+		return envImg
+	}
+	return defaultImg
 }

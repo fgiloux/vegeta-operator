@@ -27,10 +27,10 @@ To build the Vegeta container image from source you will need
 ----
 export USERNAME=<quay-username>
 
-podman build -t quay.io/$USERNAME/vegeta:v0.0.1 .
+podman build -t quay.io/$USERNAME/vegeta:12.8.3-1 .
 
 podman login quay.io/$USERNAME
-podman push IMG=quay.io/$USERNAME/vegeta:v0.0.1
+podman push IMG=quay.io/$USERNAME/vegeta:12.8.3-1
 ----
 
 == Run

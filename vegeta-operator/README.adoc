@@ -11,16 +11,12 @@ ifndef::env-github[]
 endif::[]
 :toc:
 :toc-placement!:
-:source-highlighter: rouge
 
 == Overview
 
 This repository contains the code for creating an operator managing runs of the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool] on Kubernetes / OpenShift. Inspired by https://github.com/peter-evans/vegeta-docker[Vegeta docker] attacks can be triggered by creating Vegeta https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resources].
 
 It leverages the https://sdk.operatorframework.io/docs/building-operators/golang[operator-sdk].
-
-
-== Installation
 
 == Build from source
 
@@ -45,7 +41,28 @@ make docker-push IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1 <2>
 <1> If you are like me using podman rather than docker
 <2> Push the image into a repository
 
-NOTE: You may also want to build the container image used for running Vegeta. See its https://github.com/fgiloux/vegeta-operator/tree/main/images[readme page].
+NOTE: You may also want to build the container image used for running Vegeta. See its https://github.com/fgiloux/vegeta-operator/tree/main/images[readme page]. The default Vegeta image in use is configurable through environment variable at the operator level or in a field of the Vegeta resource for each attack.
+
+== Installation
+
+For installing the Operator you currently need
+
+* to clone this repository
+* to log into the targetted cluster
+* to register custom resource definitions:
+
+[source,shell]
+----
+make install
+----
+
+* to deploy the operator
+
+[source,shell]
+----
+export USERNAME=<quay-username>
+make deploy IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1
+----
 
 == License
 

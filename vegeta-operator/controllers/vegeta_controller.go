@@ -64,12 +64,7 @@ var (
 func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("vegeta", req.NamespacedName)
 	log.V(1).Info("Starting reconciliation")
-	// TODO(user): Modify the Reconcile function to compare the state specified by
-	// the Vegeta object against the actual cluster state, and then
-	// perform operations to make the cluster state reflect the state specified by
-	// the user.
-	//
-	// For a Vegeta resource there should be one or many matching pods. TODO: Describe what is used for matching.
+	// For a Vegeta resource there should be one or many matching pods, that is pods, which have the vegeta object as owner reference.
 	// Once the pod has terminated the Vegeta resource is updated with the result.
 	//
 	// Using bare pods here rather than jobs. As test executions often require multiple things to be coordinated to get meaningfull results having a mechanism to restart pods when they have not been successful does not bring benefit. In such a scenario it is better to fail fast and allow the user to start again.
@@ -149,7 +144,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			} else {
 				vegeta.Status.Phase = vegetav1alpha1.SucceededPhase
 			}
-			// TODO: I need to implement report processing that will bring to the CompletedPhase
+			// TODO: Report processing that brings to the CompletedPhase still needs to be implemented
 		}
 		if err := r.Status().Update(ctx, vegeta); err != nil {
 			return ctrl.Result{}, fmt.Errorf("Unable to update Vegeta status: %v", err)

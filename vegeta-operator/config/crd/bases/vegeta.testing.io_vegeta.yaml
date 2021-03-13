@@ -163,6 +163,10 @@ spec:
                       rate, unless it'd go beyond MaxWorkers.
                     type: integer
                 type: object
+              image:
+                description: Image allows to select a different container image for
+                  the Vegeta attack than the one configured at the operator level
+                type: string
               replicas:
                 description: Specifies the number of pods running the attack. The
                   attack as specified above will be run by each pod. This brings an

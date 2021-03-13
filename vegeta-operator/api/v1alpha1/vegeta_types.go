@@ -246,6 +246,10 @@ type VegetaSpec struct {
 	//
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Image allows to select a different container image for the Vegeta attack than the one configured at the operator level
+	// +optional
+	Image string `json:"image,omitempty"`
 }
 
 // VegetaStatus defines the observed state of Vegeta

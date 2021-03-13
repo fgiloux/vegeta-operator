@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"strconv"
+	"strings"
 
 	vegetav1alpha1 "github.com/fgiloux/vegeta-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +36,12 @@ const (
 func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 	immediate := int64(0)
 	volumes, mounts := getAPVolumesAndMounts(v)
+	var image string
+	if vImg := strings.TrimSpace(v.Spec.Image); vImg != "" {
+		image = vImg
+	} else {
+		image = r.Image
+	}
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: v.Name + "-",
@@ -43,7 +50,7 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
-				Image:        r.Image,
+				Image:        image,
 				Name:         containerName,
 				Command:      getAttackCmd(v),
 				Resources:    v.Spec.Resources,
@@ -155,7 +162,6 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) []string {
 	}
 
 	// In case of results being sent to standard ouptut the report should be processed immediately. There is no way to process it afterwards.
-	// TODO: use the enum
 	if veg.Spec.Report == nil || veg.Spec.Report.OutputType == "" || veg.Spec.Report.OutputType == vegetav1alpha1.StdoutOutput {
 		cmd = append(cmd, "|")
 		cmd = append(cmd, getReportCmd(veg)...)
