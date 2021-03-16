@@ -162,12 +162,10 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VegetaReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	log := r.Log.WithValues("vegeta", "test-vegeta")
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1.Pod{}, podOwnerKey, func(rawObj client.Object) []string {
 		// grab the job object, extract the owner...
 		pod := rawObj.(*corev1.Pod)
 		owner := metav1.GetControllerOf(pod)
-		log.V(1).Info("retrieving owner", "owner", owner)
 		if owner == nil {
 			return nil
 		}

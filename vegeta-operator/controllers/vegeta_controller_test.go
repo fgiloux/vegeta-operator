@@ -176,6 +176,39 @@ var _ = Describe("Vegeta controller", func() {
 			Expect(createdVegeta.Status.Phase).Should(Equal(v1alpha1.FailedPhase))
 		})
 	})
+	Context("When RootCertsConfigMap is specified", func() {
+		It("Should create pods mounting the matching config map", func() {
+			By("Creation of the vegeta resource")
+			ctx := context.Background()
+			vegeta := newVegeta(VegetaName + "-cm")
+			vegeta.Spec.Attack.RootCertsConfigMap = "rootcerts"
+			Expect(k8sClient.Create(ctx, vegeta)).Should(Succeed())
+			msg := fmt.Sprintf("Name: %s, Namespage: %s \n", vegeta.Name, vegeta.Namespace)
+			GinkgoWriter.Write([]byte(msg))
+			vLookupKey := types.NamespacedName{Name: vegeta.Name, Namespace: TestNs}
+			createdVegeta := &vegetav1alpha1.Vegeta{}
+
+			// Creation may not immediately happen.
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
+			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
+
+			By("Creation of the pod")
+			createdPod := &corev1.Pod{}
+			podLookupKey := types.NamespacedName{Name: createdVegeta.Status.Active[0], Namespace: TestNs}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, podLookupKey, createdPod)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			Expect(createdPod.Spec.Volumes[1].Name).Should(Equal("trusted-ca"))
+		})
+	})
 })
 
 func newVegeta(name string) *vegetav1alpha1.Vegeta {

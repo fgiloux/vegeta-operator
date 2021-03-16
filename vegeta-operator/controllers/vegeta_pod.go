@@ -34,6 +34,7 @@ const (
 
 // aPod4Attack generates the definition of the attack pod
 func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
+	log := r.Log.WithValues("vegeta", v.Namespace)
 	immediate := int64(0)
 	volumes, mounts := getAPVolumesAndMounts(v)
 	var image string
@@ -42,11 +43,16 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 	} else {
 		image = r.Image
 	}
+	log.V(1).Info("Root certificates", "RootCertsConfigMap", v.Spec.Attack.RootCertsConfigMap)
+	log.V(1).Info("Volumes", "Volumes", volumes)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: v.Name + "-",
 			Namespace:    v.Namespace,
-			Labels:       r.Labels.LabelsMap,
+			Labels: r.Labels.Merge(map[string]string{
+				"app.kubernetes.io/name":       "vegeta",
+				"app.kubernetes.io/instance":   v.Name,
+				"app.kubernetes.io/managed-by": "vegeta-operator"}),
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
@@ -166,6 +172,12 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(strconv.Itoa(veg.Spec.Attack.Redirects))
 	}
 
+	if veg.Spec.Attack.RootCertsConfigMap == "" {
+		sb.WriteString(" -root-certs /etc/pki/tls/certs/ca-bundle.crt,/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt")
+	} else {
+		sb.WriteString(" -root-certs /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
+	}
+
 	if veg.Spec.Attack.Timeout != "" {
 		sb.WriteString(" -timeout ")
 		sb.WriteString(veg.Spec.Attack.Timeout)
@@ -257,21 +269,52 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 	// 	 mountPath: /etc/pki/ca-trust/extracted/pem
 	// 	 readOnly: true
 	// - TargetsConfigMap targets.json or targets.http (depending on format)
+	var ro int32 = 292
 
 	// TODO: check outputType and adapt the code for storage of results accordingly.
-	volumes := []corev1.Volume{
-		{
+	volumes := []corev1.Volume{}
+	volumes = append(volumes,
+		corev1.Volume{
 			Name: "vegeta-results",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
-		},
-	}
-	mounts := []corev1.VolumeMount{
-		{
+		})
+
+	mounts := []corev1.VolumeMount{}
+	mounts = append(mounts,
+		corev1.VolumeMount{
 			Name:      "vegeta-results",
 			MountPath: resultsPath,
-		},
+		})
+
+	if veg.Spec.Attack.RootCertsConfigMap != "" {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "trusted-ca",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: veg.Spec.Attack.RootCertsConfigMap,
+						},
+						Items: []corev1.KeyToPath{
+							corev1.KeyToPath{
+								Key:  "ca-bundle.crt",
+								Path: "tls-ca-bundle.pem",
+							},
+						},
+						DefaultMode: &ro,
+					},
+				},
+			},
+		)
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      "trusted-ca",
+				MountPath: "/etc/pki/ca-trust/extracted/pem/",
+				ReadOnly:  true,
+			},
+		)
 	}
 
 	return volumes, mounts

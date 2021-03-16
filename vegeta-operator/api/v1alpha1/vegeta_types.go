@@ -32,12 +32,6 @@ type AttackSpec struct {
 	// +optional
 	BodyConfigMap string `json:"bodyConfigMap,omitempty"`
 
-	// Specifies the secret containing the TLS client PEM encoded certificate file.
-	// The secret should contain a single file named client.crt
-	//
-	// +optional
-	CertSecret string `json:"certSecret,omitempty"`
-
 	// Specifies whether to send request bodies with the chunked transfer encoding.
 	//
 	// +optional
@@ -150,9 +144,8 @@ type AttackSpec struct {
 	// - serviceAccountName
 	// - tolerations
 
-	// Specifies a config map containing the trusted TLS root CAs certificate files If unspecified, the default system CAs certificates will be used.
+	// Specifies a config map containing the trusted TLS root CAs certificate files If unspecified, the default kubernetes and system CAs certificates will be used.
 	// The key for the file should be named: ca-bundle.crt
-	// The file should be named: tls-ca-bundle.pem
 	// With OpenShift this config map can get automatically populated by configuring cluster-wide trusted CA certificates and setting the following label to the empty config map: config.openshift.io/inject-trusted-cabundle=true, whose name is set into this field.
 	//
 	//

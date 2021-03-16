@@ -70,7 +70,6 @@ func init() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flagset.StringVar(&cfg.Namespaces, "namespaces", "", "Namespaces to scope the interaction of the Vegeta Operator and the apiserver (allow list).")
 	flagset.Var(&cfg.Labels, "labels", "Labels to be add to all resources created by the operator")
-
 	// Add the zap logger flag set
 	zapOpts.BindFlags(flagset)
 
