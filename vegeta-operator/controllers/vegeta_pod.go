@@ -87,7 +87,6 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 	   // - CertSecret client.crt Specifies the secret containing the TLS client PEM encoded certificate file.
 	   // - HeadersConfigMap headers.txt Specifies a config map containing request headers to be used in all targets defined
 	   // - KeySecret client.key Specifies the secret containing the PEM encoded TLS client certificate private key
-	   // - RootCertsConfigMap *.crt
 	   	// - TargetsConfigMap targets.json or targets.http (depending on format)
 	*/
 
@@ -103,7 +102,7 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(bodyPath)
 	}
 
-	if veg.Spec.Attack.BodyConfigMap != "" {
+	if veg.Spec.Attack.Chunked {
 		sb.WriteString(" -chunked")
 	}
 
@@ -256,18 +255,6 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 	// - CertSecret client.crt Specifies the secret containing the TLS client PEM encoded certificate file.
 	// - HeadersConfigMap headers.txt Specifies a config map containing request headers to be used in all targets defined
 	// - KeySecret client.key Specifies the secret containing the PEM encoded TLS client certificate private key
-	// - RootCertsConfigMap *.crt
-	//  volumes:
-	//  - name: trusted-ca
-	//  configMap:
-	//    name: trusted-ca
-	//    items:
-	// 	 - key: ca-bundle.crt
-	// 	   path: tls-ca-bundle.pem
-	//  volumeMounts:
-	//    - name: trusted-ca
-	// 	 mountPath: /etc/pki/ca-trust/extracted/pem
-	// 	 readOnly: true
 	// - TargetsConfigMap targets.json or targets.http (depending on format)
 	var ro int32 = 292
 
@@ -308,10 +295,41 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 				},
 			},
 		)
+
 		mounts = append(mounts,
 			corev1.VolumeMount{
 				Name:      "trusted-ca",
 				MountPath: "/etc/pki/ca-trust/extracted/pem/",
+				ReadOnly:  true,
+			},
+		)
+	}
+
+	if veg.Spec.Attack.BodyConfigMap != "" {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "body",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: veg.Spec.Attack.BodyConfigMap,
+						},
+						Items: []corev1.KeyToPath{
+							corev1.KeyToPath{
+								Key:  "body.txt",
+								Path: "body.txt",
+							},
+						},
+						DefaultMode: &ro,
+					},
+				},
+			},
+		)
+
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      "body",
+				MountPath: "/opt/config/",
 				ReadOnly:  true,
 			},
 		)

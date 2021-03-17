@@ -42,7 +42,7 @@ spec:
                   bodyConfigMap:
                     description: Specifies a config map containing the body of every
                       request unless overridden per attack target. The config  map
-                      should contain a single file named body.txt
+                      should contain a file named body.txt
                     type: string
                   chunked:
                     description: Specifies whether to send request bodies with the

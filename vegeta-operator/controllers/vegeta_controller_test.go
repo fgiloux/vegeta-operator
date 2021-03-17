@@ -176,11 +176,12 @@ var _ = Describe("Vegeta controller", func() {
 			Expect(createdVegeta.Status.Phase).Should(Equal(v1alpha1.FailedPhase))
 		})
 	})
-	Context("When RootCertsConfigMap is specified", func() {
+	Context("When config maps are specified", func() {
 		It("Should create pods mounting the matching config map", func() {
 			By("Creation of the vegeta resource")
 			ctx := context.Background()
 			vegeta := newVegeta(VegetaName + "-cm")
+			vegeta.Spec.Attack.BodyConfigMap = "body"
 			vegeta.Spec.Attack.RootCertsConfigMap = "rootcerts"
 			Expect(k8sClient.Create(ctx, vegeta)).Should(Succeed())
 			msg := fmt.Sprintf("Name: %s, Namespage: %s \n", vegeta.Name, vegeta.Namespace)
@@ -206,7 +207,10 @@ var _ = Describe("Vegeta controller", func() {
 				}
 				return true
 			}, timeout, interval).Should(BeTrue())
+			msg = fmt.Sprintf("Pod: %v", createdPod)
+			GinkgoWriter.Write([]byte(msg))
 			Expect(createdPod.Spec.Volumes[1].Name).Should(Equal("trusted-ca"))
+			Expect(createdPod.Spec.Volumes[2].Name).Should(Equal("body"))
 		})
 	})
 })

@@ -27,7 +27,7 @@ import (
 // AttackSpec defines the desired attacks.
 type AttackSpec struct {
 	// Specifies a config map containing the body of every request unless overridden per attack target.
-	// The config  map should contain a single file named body.txt
+	// The config  map should contain a file named body.txt
 	//
 	// +optional
 	BodyConfigMap string `json:"bodyConfigMap,omitempty"`
