@@ -125,6 +125,12 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(" -h2c")
 	}
 
+	for _, h := range veg.Spec.Attack.Headers {
+		sb.WriteString(" -header \"")
+		sb.WriteString(h)
+		sb.WriteString("\"")
+	}
+
 	if veg.Spec.Attack.HTTP2 {
 		sb.WriteString(" -http2")
 	}

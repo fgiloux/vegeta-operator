@@ -71,12 +71,13 @@ spec:
                     description: Specifies that HTTP2 requests are to be sent over
                       TCP without TLS encryption.
                     type: boolean
-                  headersConfigMap:
-                    description: Specifies a config map containing request headers
-                      to be used in all targets defined. The config map should contain
-                      a single file named headers.txt. You can specify as many as
-                      needed by writing a new header on a new line.
-                    type: string
+                  headers:
+                    description: Specifies request headers to be used in all targets
+                      defined. You can specify as many as needed by writing a new
+                      header on a new line.
+                    items:
+                      type: string
+                    type: array
                   http2:
                     description: Specifies whether to enable HTTP/2 requests to servers
                       which support it.

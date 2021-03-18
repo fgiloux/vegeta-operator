@@ -57,11 +57,11 @@ type AttackSpec struct {
 	// +optional
 	H2C bool `json:"h2c,omitempty"`
 
-	// Specifies a config map containing request headers to be used in all targets defined.
-	// The config map should contain a single file named headers.txt. You can specify as many as needed by writing a new header on a new line.
+	// Specifies request headers to be used in all targets defined.
+	// You can specify as many as needed by writing a new header on a new line.
 	//
 	// +optional
-	HeadersConfigMap string `json:"headersConfigMap,omitempty"`
+	Headers []string `json:"headers,omitempty"`
 
 	// Specifies whether to enable HTTP/2 requests to servers which support it.
 	//
@@ -235,14 +235,14 @@ type VegetaSpec struct {
 	// +optional
 	Report *ReportSpec `json:"report,omitempty"`
 
+	// Image allows to select a different container image for the Vegeta attack than the one configured at the operator level
+	// +optional
+	Image string `json:"image,omitempty"`
+
 	// Specifies the resource requests and limits of the vegeta container.
 	//
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-
-	// Image allows to select a different container image for the Vegeta attack than the one configured at the operator level
-	// +optional
-	Image string `json:"image,omitempty"`
 }
 
 // VegetaStatus defines the observed state of Vegeta

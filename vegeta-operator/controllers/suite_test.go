@@ -135,6 +135,8 @@ var _ = BeforeSuite(func(done Done) {
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
+	// Start from clean sheet
+	k8sClient.Delete(ctx, testNs)
 	Expect(k8sClient.Create(ctx, testNs)).Should(Succeed())
 
 	close(done)
