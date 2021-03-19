@@ -143,6 +143,10 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(" -keepalive")
 	}
 
+	if veg.Spec.Attack.KeySecret != "" {
+		sb.WriteString(" -key /opt/config/credentials/client.key")
+	}
+
 	if veg.Spec.Attack.Lazy {
 		sb.WriteString(" -lazy")
 	}
@@ -246,20 +250,12 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 	// TODO: make vegeta report storage configurable as per the related field in the vegeta resource
 	// default mode 644 should be fine for results ((RW by ownwer RO by others)
 	// for configmaps and secrets I may want to mount them readonly: volumeMount.readOnly: true
-	// Volume: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#volume-v1-core
-	// ConfigMap: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#configmapvolumesource-v1-core
-	// Secret: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#secretvolumesource-v1-core
-	// EmptyDir: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#emptydirvolumesource-v1-core
-	// VolumeMount: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#volumemount-v1-core
 	//
-	// reports PV to be mounted RW under /reports
-	// configs CM RO under /opt/config/ (except RootCertsConfigMap)
-	// CA CM RO under /opt/config/credentials
-	// secrets under /opt/config/credentials
+	// reports PV are mounted RW under /reports
+	// configs CM are mounted RO under /opt/config/ (except RootCertsConfigMap)
+	// secrets are mounted RO under /opt/config/credentials
 	// Fields (all optionals):
 	// - BodyConfigMap body.txt Specifies a config map containing the body of every request unless overridden per attack target.
-	// - CertSecret client.crt Specifies the secret containing the TLS client PEM encoded certificate file.
-	// - HeadersConfigMap headers.txt Specifies a config map containing request headers to be used in all targets defined
 	// - KeySecret client.key Specifies the secret containing the PEM encoded TLS client certificate private key
 	// - TargetsConfigMap targets.json or targets.http (depending on format)
 	var ro int32 = 292
@@ -336,6 +332,34 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 			corev1.VolumeMount{
 				Name:      "body",
 				MountPath: "/opt/config/",
+				ReadOnly:  true,
+			},
+		)
+	}
+
+	if veg.Spec.Attack.KeySecret != "" {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "key",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: veg.Spec.Attack.KeySecret,
+						Items: []corev1.KeyToPath{
+							corev1.KeyToPath{
+								Key:  "client.key",
+								Path: "client.key",
+							},
+						},
+						DefaultMode: &ro,
+					},
+				},
+			},
+		)
+
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      "key",
+				MountPath: "/opt/config/credentials",
 				ReadOnly:  true,
 			},
 		)

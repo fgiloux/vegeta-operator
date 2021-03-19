@@ -92,7 +92,7 @@ spec:
                   keySecret:
                     description: Specifies the secret containing the PEM encoded TLS
                       client certificate private key file to be used with HTTPS requests.
-                      The secret should contain a single file named client.key.
+                      The secret should contain a file named client.key.
                     type: string
                   lazy:
                     description: Specifies whether to read the input targets lazily

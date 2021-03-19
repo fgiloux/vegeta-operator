@@ -78,7 +78,7 @@ type AttackSpec struct {
 	// +optional
 	KeepAlive bool `json:"keepAlive,omitempty"`
 
-	// Specifies the secret containing the PEM encoded TLS client certificate private key file to be used with HTTPS requests. The secret should contain a single file named client.key.
+	// Specifies the secret containing the PEM encoded TLS client certificate private key file to be used with HTTPS requests. The secret should contain a file named client.key.
 	//
 	// +optional
 	KeySecret string `json:"keySecret,omitempty"`
@@ -136,8 +136,8 @@ type AttackSpec struct {
 	// Specifies custom DNS resolver addresses to use for name resolution instead of the ones configured by the operating system.
 	// It is of no interest as pods allow more ellaborate DNS configuration:
 	// https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
-	// TODO: add the matching fields to the VegetaSpec, possibly in a subresource containing pod configuration.
 	// Resolvers string `json:"resolvers,omitempty"`
+
 	// TODO: Supporting additional pod configuration could be considered
 	// - priorityClassName
 	// - schedulerName

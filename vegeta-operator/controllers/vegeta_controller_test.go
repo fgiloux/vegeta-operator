@@ -176,13 +176,14 @@ var _ = Describe("Vegeta controller", func() {
 			Expect(createdVegeta.Status.Phase).Should(Equal(v1alpha1.FailedPhase))
 		})
 	})
-	Context("When config maps are specified", func() {
-		It("Should create pods mounting the matching config map", func() {
+	Context("When config maps and secrets are specified", func() {
+		It("Should create pods mounting the matching config maps and secrets", func() {
 			By("Creation of the vegeta resource")
 			ctx := context.Background()
 			vegeta := newVegeta(VegetaName + "-cm")
 			vegeta.Spec.Attack.BodyConfigMap = "body"
 			vegeta.Spec.Attack.RootCertsConfigMap = "rootcerts"
+			vegeta.Spec.Attack.KeySecret = "key"
 			Expect(k8sClient.Create(ctx, vegeta)).Should(Succeed())
 			msg := fmt.Sprintf("Name: %s, Namespage: %s \n", vegeta.Name, vegeta.Namespace)
 			GinkgoWriter.Write([]byte(msg))
@@ -211,6 +212,7 @@ var _ = Describe("Vegeta controller", func() {
 			GinkgoWriter.Write([]byte(msg))
 			Expect(createdPod.Spec.Volumes[1].Name).Should(Equal("trusted-ca"))
 			Expect(createdPod.Spec.Volumes[2].Name).Should(Equal("body"))
+			//Expect(createdPod.Spec.Volumes[3].Name).Should(Equal("key"))
 		})
 	})
 })
