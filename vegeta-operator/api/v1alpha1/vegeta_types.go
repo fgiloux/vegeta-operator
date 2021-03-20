@@ -152,8 +152,9 @@ type AttackSpec struct {
 	// +optional
 	RootCertsConfigMap string `json:"rootCertsConfigMap,omitempty"`
 
-	// Target refers to the target endpoint for the load testing.
-	// For multiple targets use TargetsConfigMap.
+	// Target refers to the target endpoint for the load testing including the http verb.
+	// Example: GET https://kubernetes.default.svc.cluster.local:443/healthz
+	// For multiple targets use TargetsConfigMap and don't specify this field.
 	//
 	// +optional
 	Target string `json:"target"`
@@ -199,7 +200,7 @@ type ReportSpec struct {
 	Every string `json:"every,omitempty"`
 
 	// Specifies the output location. The value should match a persistent volume claim or an object bucket claim name.
-	// In case of PVC the name of the result file is based on the attack, pod name and a timestamp. For now volumes are to be RWM in case of a distributed attack as they get mounted by each pod.
+	// In case of PVC the names of the result and reports file are based on the creation time of the vegeta object and pod names. For now volumes are to be RWM in case of a distributed attack as they get mounted by each pod.
 	//
 	// +optional
 	OutputClaim string `json:"outputClaim,omitempty"`
@@ -298,7 +299,7 @@ const (
 	StdoutOutput OutputTypeEnum = "stdout"
 	// PvcOutput requests that results are stored in a persistent volume
 	PvcOutput OutputTypeEnum = "pvc"
-	// ObcOutput requests that results are stored in an object buket
+	// ObcOutput requests that results are stored in an object bucket
 	ObcOutput OutputTypeEnum = "obc"
 )
 

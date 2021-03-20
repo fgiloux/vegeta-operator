@@ -7,5 +7,5 @@ spec:
   attack:
     duration: "10s"
     rate:     "5/1s"
-    target:   "https://kubernetes.default.svc.cluster.local:443/healthz"
+    target:   "GET https://kubernetes.default.svc.cluster.local:443/healthz"
   replicas: 1

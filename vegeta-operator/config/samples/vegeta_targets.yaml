@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: vegeta.testing.io/v1alpha1
+  kind: Vegeta
+  metadata:
+    name: vegeta-sample
+  spec:
+    # Add fields here
+    attack:
+      duration: "10s"
+      rate:     "5/1s"
+      headers:
+        - "From: user@example.com"
+        - "Pragma: no-cache"
+      targetsConfigMap: "targets"
+      format: "http"
+    replicas: 1
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: targets
+  data:
+    targets.http: |
+      GET https://kubernetes.default.svc.cluster.local:443/healthz

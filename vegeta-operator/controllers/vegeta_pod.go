@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	containerName = "vegeta"
-	resultsPath   = "/results"
-	bodyPath      = "/opt/config/body.txt"
+	containerName   = "vegeta"
+	configPath      = "/opt/config/"
+	credentialsPath = "/opt/config/credentials/"
+	resultsPath     = "/results/"
 )
 
 // aPod4Attack generates the definition of the attack pod
@@ -80,8 +81,7 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 // getAttackCmd assembles an attack command based on the parameters configured in the vegeta resource
 func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 
-	/* TODO
-
+	/*
 	   Mounts:
 	   // - BodyConfigMap body.txt Specifies a config map containing the body of every request unless overridden per attack target.
 	   // - CertSecret client.crt Specifies the secret containing the TLS client PEM encoded certificate file.
@@ -91,15 +91,27 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 	*/
 
 	var sb strings.Builder
-	if veg.Spec.Attack.Target != "" {
-		sb.WriteString(`echo GET `)
+
+	if veg.Spec.Attack.TargetsConfigMap != "" {
+		sb.WriteString("vegeta attack -targets ")
+		sb.WriteString(configPath)
+		sb.WriteString("targets")
+		if veg.Spec.Attack.Format == vegetav1alpha1.JSONFormat {
+			sb.WriteString(".json ")
+		} else {
+			sb.WriteString(".http ")
+		}
+	} else if veg.Spec.Attack.Target != "" {
+		sb.WriteString("echo ")
 		sb.WriteString(veg.Spec.Attack.Target)
-		sb.WriteString(` | `)
+		sb.WriteString(" | ")
+		sb.WriteString("vegeta attack")
 	}
-	sb.WriteString("vegeta attack")
+
 	if veg.Spec.Attack.BodyConfigMap != "" {
 		sb.WriteString(" -body ")
-		sb.WriteString(bodyPath)
+		sb.WriteString(configPath)
+		sb.WriteString("body.txt")
 	}
 
 	if veg.Spec.Attack.Chunked {
@@ -144,7 +156,9 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 	}
 
 	if veg.Spec.Attack.KeySecret != "" {
-		sb.WriteString(" -key /opt/config/credentials/client.key")
+		sb.WriteString(" -key ")
+		sb.WriteString(credentialsPath)
+		sb.WriteString("client.key")
 	}
 
 	if veg.Spec.Attack.Lazy {
@@ -197,10 +211,23 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(strconv.FormatUint(uint64(veg.Spec.Attack.Workers), 10))
 	}
 
-	// In case of results being sent to standard ouptut the report should be processed immediately. There is no way to process it afterwards.
-	if veg.Spec.Report == nil || veg.Spec.Report.OutputType == "" || veg.Spec.Report.OutputType == vegetav1alpha1.StdoutOutput {
+	// In case of results being sent to standard ouptut the report should be processed immediately. There is no way to process it afterwards. Otherwise the output gets stored for later processing.
+	if veg.Spec.Report == nil {
 		sb.WriteString(" | ")
 		sb.WriteString(getReportCmd(veg))
+	} else {
+		switch veg.Spec.Report.OutputType {
+		case vegetav1alpha1.PvcOutput:
+			sb.WriteString(" -output ")
+			sb.WriteString(resultsPath)
+			sb.WriteString(getResultFileName(veg))
+			sb.WriteString("_res.gob")
+		case vegetav1alpha1.ObcOutput:
+			// TODO: not implemented
+		default:
+			sb.WriteString(" | ")
+			sb.WriteString(getReportCmd(veg))
+		}
 	}
 
 	// TODO:
@@ -225,10 +252,11 @@ func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(veg.Spec.Report.Every)
 	}
 
-	if veg.Spec.Report != nil && veg.Spec.Report.OutputType != "" && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
 		// TODO: I am only generating reports in binary format. I may need to encode them in one of the available formats: (gob | json | csv)
 		sb.WriteString(" -output ")
-		sb.WriteString(getReportFileName(veg))
+		sb.WriteString(getResultFileName(veg))
+		sb.WriteString("_rep.gob")
 	}
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Type.String() != "" {
@@ -238,39 +266,45 @@ func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 	return sb.String()
 }
 
-// getReportFileName generates the name of the report file
-func getReportFileName(veg *vegetav1alpha1.Vegeta) string {
-	fname := []string{}
-	fname = append(fname, veg.GetName(), "-$(hostname)-$(date +%s).gob")
-	return veg.GetName() + "-$(hostname)-$(date +%s).gob"
+// getResultFileName generates the name of the result file (used for result and report)
+func getResultFileName(veg *vegetav1alpha1.Vegeta) string {
+	return veg.ObjectMeta.GetCreationTimestamp().Format("20060102150405") + "-${HOSTNAME}"
 }
 
 // getAPVolumesAndMounts generates the list of volumes and mounts for the attack pod
 func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev1.VolumeMount) {
-	// TODO: make vegeta report storage configurable as per the related field in the vegeta resource
-	// default mode 644 should be fine for results ((RW by ownwer RO by others)
-	// for configmaps and secrets I may want to mount them readonly: volumeMount.readOnly: true
-	//
-	// reports PV are mounted RW under /reports
+	// reports PV are mounted RW under /reports/
 	// configs CM are mounted RO under /opt/config/ (except RootCertsConfigMap)
-	// secrets are mounted RO under /opt/config/credentials
+	// secrets are mounted RO under /opt/config/credentials/
 	// Fields (all optionals):
 	// - BodyConfigMap body.txt Specifies a config map containing the body of every request unless overridden per attack target.
 	// - KeySecret client.key Specifies the secret containing the PEM encoded TLS client certificate private key
 	// - TargetsConfigMap targets.json or targets.http (depending on format)
 	var ro int32 = 292
-
-	// TODO: check outputType and adapt the code for storage of results accordingly.
 	volumes := []corev1.Volume{}
-	volumes = append(volumes,
-		corev1.Volume{
-			Name: "vegeta-results",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-
 	mounts := []corev1.VolumeMount{}
+
+	if veg.Spec.Report == nil || veg.Spec.Report.OutputType != vegetav1alpha1.PvcOutput {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "vegeta-results",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+	} else {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "vegeta-results",
+				VolumeSource: corev1.VolumeSource{
+					//EmptyDir: &corev1.EmptyDirVolumeSource{},
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: veg.Spec.Report.OutputClaim,
+					},
+				},
+			})
+	}
+
 	mounts = append(mounts,
 		corev1.VolumeMount{
 			Name:      "vegeta-results",
@@ -331,7 +365,7 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 		mounts = append(mounts,
 			corev1.VolumeMount{
 				Name:      "body",
-				MountPath: "/opt/config/",
+				MountPath: configPath,
 				ReadOnly:  true,
 			},
 		)
@@ -359,7 +393,43 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 		mounts = append(mounts,
 			corev1.VolumeMount{
 				Name:      "key",
-				MountPath: "/opt/config/credentials",
+				MountPath: credentialsPath,
+				ReadOnly:  true,
+			},
+		)
+	}
+
+	if veg.Spec.Attack.TargetsConfigMap != "" {
+		var file string
+		if veg.Spec.Attack.Format == vegetav1alpha1.JSONFormat {
+			file = "targets.json"
+		} else {
+			file = "targets.http"
+		}
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "targets",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: veg.Spec.Attack.TargetsConfigMap,
+						},
+						Items: []corev1.KeyToPath{
+							corev1.KeyToPath{
+								Key:  file,
+								Path: file,
+							},
+						},
+						DefaultMode: &ro,
+					},
+				},
+			},
+		)
+
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      "targets",
+				MountPath: configPath,
 				ReadOnly:  true,
 			},
 		)

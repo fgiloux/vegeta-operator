@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: vegeta.testing.io/v1alpha1
+  kind: Vegeta
+  metadata:
+    name: vegeta-sample
+  spec:
+    # Add fields here
+    attack:
+      duration: "10s"
+      rate:     "5/1s"
+      headers:
+        - "From: user@example.com"
+        - "Pragma: no-cache"
+      target:   "GET https://kubernetes.default.svc.cluster.local:443/healthz"
+      format: "http"
+    report:
+      outputType: "pvc"
+      outputClaim: "targets"
+    replicas: 1
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: "targets"
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    volumeMode: Filesystem
+    resources:
+      requests:
+        storage: 100Mi

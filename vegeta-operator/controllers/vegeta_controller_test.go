@@ -215,6 +215,42 @@ var _ = Describe("Vegeta controller", func() {
 			//Expect(createdPod.Spec.Volumes[3].Name).Should(Equal("key"))
 		})
 	})
+	Context("When a PVC is provided for storing results", func() {
+		It("Should create pods mounting the matching volume", func() {
+			By("Creation of the vegeta resource")
+			ctx := context.Background()
+			vegeta := newVegeta(VegetaName + "-pvc")
+			vegeta.Spec.Report.OutputType = vegetav1alpha1.PvcOutput
+			vegeta.Spec.Report.OutputClaim = "report-claim"
+			Expect(k8sClient.Create(ctx, vegeta)).Should(Succeed())
+			msg := fmt.Sprintf("Name: %s, Namespage: %s \n", vegeta.Name, vegeta.Namespace)
+			GinkgoWriter.Write([]byte(msg))
+			vLookupKey := types.NamespacedName{Name: vegeta.Name, Namespace: TestNs}
+			createdVegeta := &vegetav1alpha1.Vegeta{}
+
+			// Creation may not immediately happen.
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
+			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
+
+			By("Creation of the pod")
+			createdPod := &corev1.Pod{}
+			podLookupKey := types.NamespacedName{Name: createdVegeta.Status.Active[0], Namespace: TestNs}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, podLookupKey, createdPod)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			msg = fmt.Sprintf("Pod: %v", createdPod)
+			GinkgoWriter.Write([]byte(msg))
+			Expect(createdPod.Spec.Volumes[0].Name).Should(Equal("vegeta-results"))
+		})
+	})
 })
 
 func newVegeta(name string) *vegetav1alpha1.Vegeta {
@@ -231,8 +267,9 @@ func newVegeta(name string) *vegetav1alpha1.Vegeta {
 			Attack: &vegetav1alpha1.AttackSpec{
 				Duration: "10s",
 				Rate:     "1s",
-				Target:   "",
+				Target:   "GET https://kubernetes.default.svc.cluster.local:443/healthz",
 			},
+			Report:   &vegetav1alpha1.ReportSpec{},
 			Replicas: 1,
 		},
 	}
