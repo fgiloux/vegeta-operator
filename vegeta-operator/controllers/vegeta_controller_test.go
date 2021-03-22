@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Vegeta controller", func() {
@@ -84,7 +85,7 @@ var _ = Describe("Vegeta controller", func() {
 			Eventually(func() v1alpha1.PhaseEnum {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
-			}, timeout, interval).Should(Equal(v1alpha1.SucceededPhase))
+			}, timeout, interval).Should(Equal(v1alpha1.CompletedPhase))
 			msg = fmt.Sprintf("Vegeta phase: %s\n", createdVegeta.Status.Phase)
 			GinkgoWriter.Write([]byte(msg))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(0))
@@ -216,7 +217,7 @@ var _ = Describe("Vegeta controller", func() {
 		})
 	})
 	Context("When a PVC is provided for storing results", func() {
-		It("Should create pods mounting the matching volume", func() {
+		It("Should create pods mounting the matching volume and run a report pod after the attack pods have succeeded", func() {
 			By("Creation of the vegeta resource")
 			ctx := context.Background()
 			vegeta := newVegeta(VegetaName + "-pvc")
@@ -249,6 +250,46 @@ var _ = Describe("Vegeta controller", func() {
 			msg = fmt.Sprintf("Pod: %v", createdPod)
 			GinkgoWriter.Write([]byte(msg))
 			Expect(createdPod.Spec.Volumes[0].Name).Should(Equal("vegeta-results"))
+
+			By("Completion")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, podLookupKey, createdPod)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			createdPod.Status.Phase = corev1.PodSucceeded
+			Expect(k8sClient.Status().Update(ctx, createdPod)).Should(Succeed())
+
+			// Check that the vegeta object reaches completion
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			Eventually(func() v1alpha1.PhaseEnum {
+				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
+				return createdVegeta.Status.Phase
+			}, timeout, interval).Should(Equal(v1alpha1.CompletedPhase))
+
+			// Check that a pod has been started for report generation
+			podList := &corev1.PodList{}
+			Eventually(func() bool {
+				if err := k8sClient.List(ctx, podList, client.MatchingLabels{"vegeta.testing.io/type": "report"}); err != nil {
+					return false
+				}
+				if len(podList.Items) == 1 {
+					return true
+				} else {
+					return false
+				}
+			}, timeout, interval).Should(BeTrue())
+			msg = fmt.Sprintf("Pod: %v", podList.Items[0])
+			GinkgoWriter.Write([]byte(msg))
 		})
 	})
 })

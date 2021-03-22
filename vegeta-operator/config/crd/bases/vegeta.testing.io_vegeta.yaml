@@ -252,13 +252,7 @@ spec:
                 items:
                   type: string
                 type: array
-              succeeded:
-                description: Succeeded contains the names of pods that sucessfully
-                  completed.
-                items:
-                  type: string
-                type: array
-              type:
+              phase:
                 description: 'Phase of the processing of the Vegeta request. Possible
                   values are: pending (no pod started), running (not all pods have
                   terminated yet and no pod has failed), failed (one of the pod has
@@ -266,6 +260,12 @@ spec:
                   has not been generated yet), completed (all pods have successfully
                   terminated and report has been generated)'
                 type: string
+              succeeded:
+                description: Succeeded contains the names of pods that sucessfully
+                  completed.
+                items:
+                  type: string
+                type: array
             type: object
         type: object
     served: true

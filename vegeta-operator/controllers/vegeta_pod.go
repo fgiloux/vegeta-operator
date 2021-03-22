@@ -35,7 +35,6 @@ const (
 
 // aPod4Attack generates the definition of the attack pod
 func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
-	log := r.Log.WithValues("vegeta", v.Namespace)
 	immediate := int64(0)
 	volumes, mounts := getAPVolumesAndMounts(v)
 	var image string
@@ -44,8 +43,6 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 	} else {
 		image = r.Image
 	}
-	log.V(1).Info("Root certificates", "RootCertsConfigMap", v.Spec.Attack.RootCertsConfigMap)
-	log.V(1).Info("Volumes", "Volumes", volumes)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: v.Name + "-",
@@ -53,7 +50,8 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 			Labels: r.Labels.Merge(map[string]string{
 				"app.kubernetes.io/name":       "vegeta",
 				"app.kubernetes.io/instance":   v.Name,
-				"app.kubernetes.io/managed-by": "vegeta-operator"}),
+				"app.kubernetes.io/managed-by": "vegeta-operator",
+				"vegeta.testing.io/type":       "attack"}),
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
@@ -73,6 +71,63 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 			TerminationGracePeriodSeconds: &immediate,
 		},
 	}
+	// Set Vegeta instance as the owner and controller
+	ctrl.SetControllerReference(v, pod, r.Scheme)
+	return pod
+}
+
+// aPod4Report generates the definition of the report pod
+func (r *VegetaReconciler) aPod4Report(v *vegetav1alpha1.Vegeta) *corev1.Pod {
+	immediate := int64(0)
+	var image string
+	if vImg := strings.TrimSpace(v.Spec.Image); vImg != "" {
+		image = vImg
+	} else {
+		image = r.Image
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: v.Name + "-report-",
+			Namespace:    v.Namespace,
+			Labels: r.Labels.Merge(map[string]string{
+				"app.kubernetes.io/name":       "vegeta",
+				"app.kubernetes.io/instance":   v.Name,
+				"app.kubernetes.io/managed-by": "vegeta-operator",
+				"vegeta.testing.io/type":       "report"}),
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Image:           image,
+				ImagePullPolicy: "Always",
+				Name:            containerName,
+				Command:         []string{"/bin/sh"},
+				Args:            []string{"-c", getReportCmd(v)},
+				Resources:       v.Spec.Resources,
+				VolumeMounts: []corev1.VolumeMount{
+					corev1.VolumeMount{
+						Name:      "vegeta-results",
+						MountPath: resultsPath,
+					},
+				},
+				// TODO: I am not sure this needs to be made configurable. What is defined in the image should be just fine.
+				WorkingDir: resultsPath,
+			}},
+			RestartPolicy: "Never",
+			Volumes: []corev1.Volume{
+				corev1.Volume{
+					Name: "vegeta-results",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: v.Spec.Report.OutputClaim,
+						},
+					},
+				},
+			},
+			SecurityContext:               &corev1.PodSecurityContext{},
+			TerminationGracePeriodSeconds: &immediate,
+		},
+	}
+
 	// Set Vegeta instance as the owner and controller
 	ctrl.SetControllerReference(v, pod, r.Scheme)
 	return pod
@@ -240,7 +295,7 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 // getReportCmd generates the report command  based on the parameters configured in the vegeta resource
 func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 	var sb strings.Builder
-	sb.WriteString("vegeta report")
+	sb.WriteString("vegeta report ")
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Buckets != "" {
 		sb.WriteString(" -buckets ")
@@ -256,13 +311,22 @@ func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 		// TODO: I am only generating reports in binary format. I may need to encode them in one of the available formats: (gob | json | csv)
 		sb.WriteString(" -output ")
 		sb.WriteString(getResultFileName(veg))
-		sb.WriteString("_rep.gob")
+		sb.WriteString("_rep.gob ")
 	}
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Type.String() != "" {
 		sb.WriteString(" -type ")
 		sb.WriteString(veg.Spec.Report.Type.String())
 	}
+
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
+		sb.WriteString(resultsPath)
+		sb.WriteString(veg.ObjectMeta.GetCreationTimestamp().Format("20060102150405"))
+		sb.WriteString("-")
+		sb.WriteString(veg.Name)
+		sb.WriteString("*_res.* ")
+	}
+
 	return sb.String()
 }
 
@@ -297,7 +361,6 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 			corev1.Volume{
 				Name: "vegeta-results",
 				VolumeSource: corev1.VolumeSource{
-					//EmptyDir: &corev1.EmptyDirVolumeSource{},
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: veg.Spec.Report.OutputClaim,
 					},

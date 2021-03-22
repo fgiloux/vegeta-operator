@@ -266,7 +266,7 @@ type VegetaStatus struct {
 	Succeeded []string `json:"succeeded,omitempty"`
 
 	// Phase of the processing of the Vegeta request. Possible values are: pending (no pod started), running (not all pods have terminated yet and no pod has failed), failed (one of the pod has failed), succeeded (all pods have successfully terminated but report has not been generated yet), completed (all pods have successfully terminated and report has been generated)
-	Phase PhaseEnum `json:"type,omitempty"`
+	Phase PhaseEnum `json:"phase,omitempty"`
 }
 
 // +kubebuilder:object:root=true

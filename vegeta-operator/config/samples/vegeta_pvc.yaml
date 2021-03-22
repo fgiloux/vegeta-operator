@@ -17,12 +17,12 @@ items:
       format: "http"
     report:
       outputType: "pvc"
-      outputClaim: "targets"
+      outputClaim: "results"
     replicas: 1
 - apiVersion: v1
   kind: PersistentVolumeClaim
   metadata:
-    name: "targets"
+    name: "results"
   spec:
     accessModes:
     - ReadWriteOnce
