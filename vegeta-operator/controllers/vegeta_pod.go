@@ -64,6 +64,8 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 				VolumeMounts:    mounts,
 				// TODO: I am not sure this needs to be made configurable. What is defined in the image should be just fine.
 				WorkingDir: resultsPath,
+				Env:        getAttackEnv(v),
+				EnvFrom:    getEnvFrom(v),
 			}},
 			RestartPolicy:                 "Never",
 			Volumes:                       volumes,
@@ -79,6 +81,7 @@ func (r *VegetaReconciler) aPod4Attack(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 // aPod4Report generates the definition of the report pod
 func (r *VegetaReconciler) aPod4Report(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 	immediate := int64(0)
+	volumes, mounts := getRPVolumesAndMounts(v)
 	var image string
 	if vImg := strings.TrimSpace(v.Spec.Image); vImg != "" {
 		image = vImg
@@ -103,26 +106,14 @@ func (r *VegetaReconciler) aPod4Report(v *vegetav1alpha1.Vegeta) *corev1.Pod {
 				Command:         []string{"/bin/sh"},
 				Args:            []string{"-c", getReportCmd(v)},
 				Resources:       v.Spec.Resources,
-				VolumeMounts: []corev1.VolumeMount{
-					corev1.VolumeMount{
-						Name:      "vegeta-results",
-						MountPath: resultsPath,
-					},
-				},
+				VolumeMounts:    mounts,
 				// TODO: I am not sure this needs to be made configurable. What is defined in the image should be just fine.
 				WorkingDir: resultsPath,
+				Env:        getReportEnv(v),
+				EnvFrom:    getEnvFrom(v),
 			}},
-			RestartPolicy: "Never",
-			Volumes: []corev1.Volume{
-				corev1.Volume{
-					Name: "vegeta-results",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: v.Spec.Report.OutputClaim,
-						},
-					},
-				},
-			},
+			RestartPolicy:                 "Never",
+			Volumes:                       volumes,
 			SecurityContext:               &corev1.PodSecurityContext{},
 			TerminationGracePeriodSeconds: &immediate,
 		},
@@ -250,11 +241,7 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(strconv.Itoa(veg.Spec.Attack.Redirects))
 	}
 
-	if veg.Spec.Attack.RootCertsConfigMap == "" {
-		sb.WriteString(" -root-certs /etc/pki/tls/certs/ca-bundle.crt,/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt")
-	} else {
-		sb.WriteString(" -root-certs /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
-	}
+	sb.WriteString(" -root-certs /var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt,/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
 
 	if veg.Spec.Attack.Timeout != "" {
 		sb.WriteString(" -timeout ")
@@ -278,23 +265,31 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 			sb.WriteString(getResultFileName(veg))
 			sb.WriteString("_res.gob")
 		case vegetav1alpha1.ObcOutput:
-			// TODO: not implemented
+			sb.WriteString(" -output ")
+			sb.WriteString(resultsPath)
+			sb.WriteString(getResultFileName(veg))
+			sb.WriteString("_res.gob")
+			// Additional step to upload the result file to the S3 bucket
+			sb.WriteString("; s3 -command upload")
 		default:
 			sb.WriteString(" | ")
 			sb.WriteString(getReportCmd(veg))
 		}
 	}
 
-	// TODO:
-	// The report command accepts multiple result files. It'll read and sort them by timestamp before generating reports.
-	// For supporting distributed attacks this means that it is best to process the reports separately.
-	// This will be done by a pod, which gets launched after the attack pods have successfully completed
 	return sb.String()
 }
 
 // getReportCmd generates the report command  based on the parameters configured in the vegeta resource
 func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 	var sb strings.Builder
+	upload := ""
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType == vegetav1alpha1.ObcOutput {
+		// Get the files downloaded from the S3 bucket
+		sb.WriteString("s3 -command download; ")
+		upload = "; s3 -command upload"
+	}
+
 	sb.WriteString("vegeta report ")
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Buckets != "" {
@@ -310,8 +305,8 @@ func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 	if veg.Spec.Report != nil && veg.Spec.Report.OutputType != vegetav1alpha1.StdoutOutput {
 		// TODO: I am only generating reports in binary format. I may need to encode them in one of the available formats: (gob | json | csv)
 		sb.WriteString(" -output ")
-		sb.WriteString(getResultFileName(veg))
-		sb.WriteString("_rep.gob ")
+		fileName := getResultFileName(veg) + "_rep.gob "
+		sb.WriteString(fileName)
 	}
 
 	if veg.Spec.Report != nil && veg.Spec.Report.Type.String() != "" {
@@ -324,15 +319,19 @@ func getReportCmd(veg *vegetav1alpha1.Vegeta) string {
 		sb.WriteString(veg.ObjectMeta.GetCreationTimestamp().Format("20060102150405"))
 		sb.WriteString("-")
 		sb.WriteString(veg.Name)
-		sb.WriteString("*_res.* ")
+		sb.WriteString("*_res.*")
 	}
-
+	sb.WriteString(upload)
 	return sb.String()
 }
 
 // getResultFileName generates the name of the result file (used for result and report)
 func getResultFileName(veg *vegetav1alpha1.Vegeta) string {
 	return veg.ObjectMeta.GetCreationTimestamp().Format("20060102150405") + "-${HOSTNAME}"
+}
+
+func getResultBaseName(veg *vegetav1alpha1.Vegeta) string {
+	return veg.ObjectMeta.GetCreationTimestamp().Format("20060102150405") + "-" + veg.Name
 }
 
 // getAPVolumesAndMounts generates the list of volumes and mounts for the attack pod
@@ -375,6 +374,10 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 		})
 
 	if veg.Spec.Attack.RootCertsConfigMap != "" {
+		caKey := veg.Spec.Attack.RootCertsFile
+		if caKey == "" {
+			caKey = "ca-bundle.crt"
+		}
 		volumes = append(volumes,
 			corev1.Volume{
 				Name: "trusted-ca",
@@ -385,7 +388,7 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 						},
 						Items: []corev1.KeyToPath{
 							corev1.KeyToPath{
-								Key:  "ca-bundle.crt",
+								Key:  caKey,
 								Path: "tls-ca-bundle.pem",
 							},
 						},
@@ -499,4 +502,141 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 	}
 
 	return volumes, mounts
+}
+
+// getRPVolumesAndMounts generates the list of volumes and mounts for the report pod
+func getRPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev1.VolumeMount) {
+	var ro int32 = 292
+	volumes := []corev1.Volume{}
+	mounts := []corev1.VolumeMount{}
+
+	if veg.Spec.Report == nil || veg.Spec.Report.OutputType != vegetav1alpha1.PvcOutput {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "vegeta-results",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			})
+	} else {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "vegeta-results",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: veg.Spec.Report.OutputClaim,
+					},
+				},
+			})
+	}
+
+	mounts = append(mounts,
+		corev1.VolumeMount{
+			Name:      "vegeta-results",
+			MountPath: resultsPath,
+		})
+
+	if veg.Spec.Attack.RootCertsConfigMap != "" {
+		caKey := veg.Spec.Attack.RootCertsFile
+		if caKey == "" {
+			caKey = "ca-bundle.crt"
+		}
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "trusted-ca",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: veg.Spec.Attack.RootCertsConfigMap,
+						},
+						Items: []corev1.KeyToPath{
+							corev1.KeyToPath{
+								Key:  caKey,
+								Path: "tls-ca-bundle.pem",
+							},
+						},
+						DefaultMode: &ro,
+					},
+				},
+			},
+		)
+
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      "trusted-ca",
+				MountPath: "/etc/pki/ca-trust/extracted/pem/",
+				ReadOnly:  true,
+			},
+		)
+	}
+
+	return volumes, mounts
+}
+
+func getAttackEnv(veg *vegetav1alpha1.Vegeta) []corev1.EnvVar {
+	env := []corev1.EnvVar{}
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType == vegetav1alpha1.ObcOutput {
+		env = append(env,
+			corev1.EnvVar{
+				Name:  "S3_UPLOAD_FILE",
+				Value: resultsPath + getResultFileName(veg) + "_res.gob",
+			})
+	}
+	if veg.Spec.Attack.RootCertsConfigMap != "" {
+
+		env = append(env,
+			corev1.EnvVar{
+				Name:  "SSL_CERT_FILE",
+				Value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+			})
+	}
+	return env
+}
+
+func getReportEnv(veg *vegetav1alpha1.Vegeta) []corev1.EnvVar {
+	env := []corev1.EnvVar{}
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType == vegetav1alpha1.ObcOutput {
+		env = append(env,
+			corev1.EnvVar{
+				Name:  "S3_OBJECT_PREFIX",
+				Value: getResultBaseName(veg),
+			})
+		env = append(env,
+			corev1.EnvVar{
+				Name:  "S3_UPLOAD_FILE",
+				Value: resultsPath + getResultFileName(veg) + "_rep.gob",
+			})
+		if veg.Spec.Attack.RootCertsConfigMap != "" {
+			env = append(env,
+				corev1.EnvVar{
+					Name:  "SSL_CERT_FILE",
+					Value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+				})
+		}
+	}
+	return env
+}
+
+func getEnvFrom(veg *vegetav1alpha1.Vegeta) []corev1.EnvFromSource {
+	envFrom := []corev1.EnvFromSource{}
+	if veg.Spec.Report != nil && veg.Spec.Report.OutputType == vegetav1alpha1.ObcOutput {
+		envFrom = []corev1.EnvFromSource{
+			{
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: veg.Spec.Report.OutputClaim,
+					},
+				},
+			},
+			{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: veg.Spec.Report.OutputClaim,
+					},
+				},
+			},
+		}
+	}
+
+	return envFrom
 }

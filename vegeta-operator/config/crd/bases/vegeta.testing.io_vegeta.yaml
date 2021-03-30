@@ -131,11 +131,17 @@ spec:
                     description: 'Specifies a config map containing the trusted TLS
                       root CAs certificate files If unspecified, the default kubernetes
                       and system CAs certificates will be used. The key for the file
-                      should be named: ca-bundle.crt With OpenShift this config map
-                      can get automatically populated by configuring cluster-wide
-                      trusted CA certificates and setting the following label to the
-                      empty config map: config.openshift.io/inject-trusted-cabundle=true,
-                      whose name is set into this field.'
+                      can be specified by RootCertsFile. If not specified it defaults
+                      to ca-bundle.crt With OpenShift this config map can get automatically
+                      populated by configuring cluster-wide trusted CA certificates
+                      and setting the following label to the empty config map: config.openshift.io/inject-trusted-cabundle=true,
+                      whose name is set into this field. When using service serving
+                      certificates an empty configMap can get automatically populated
+                      with the signer CA by using the annotation service.beta.openshift.io/inject-cabundle=true'
+                    type: string
+                  rootCertsFile:
+                    description: Specifies the name of the file containing the root
+                      CA. See also RootCertsConfigMap.
                     type: string
                   target:
                     description: 'Target refers to the target endpoint for the load
@@ -211,7 +217,7 @@ spec:
                 type: object
               resources:
                 description: Specifies the resource requests and limits of the vegeta
-                  container.
+                  attack containers.
                 properties:
                   limits:
                     additionalProperties:

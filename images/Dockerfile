@@ -22,6 +22,8 @@ LABEL \
   io.k8s.display-name="Vegeta" \
   io.openshift.tags="vegeta,perftest"
 
+COPY s3 /bin/s3
+
 RUN set -ex \
  && microdnf install tar gzip ca-certificates \
 #  && microdnf update 

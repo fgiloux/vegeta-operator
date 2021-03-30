@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: vegeta.testing.io/v1alpha1
+  kind: Vegeta
+  metadata:
+    name: vegeta-sample
+  spec:
+    # Add fields here
+    attack:
+      duration: "10s"
+      rate:     "5/1s"
+      headers:
+        - "From: user@example.com"
+        - "Pragma: no-cache"
+      target:   "GET https://kubernetes.default.svc.cluster.local:443/healthz"
+      format: "http"
+      rootCertsConfigMap: "endpoint-ca"
+      rootCertsFile: "service-ca.crt"
+    report:
+      outputType: "obc"
+      outputClaim: "vegeta-res"
+    replicas: 3
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "250m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+# obc controller will create a configMap and a secret that can be projected into the pod
+# - apiVersion: objectbucket.io/v1alpha1
+#   kind: ObjectBucketClaim
+#   metadata:
+#     labels:
+#     name: vegeta-sample
+#   spec:
+#     generateBucketName: vegeta-test-results
+#     storageClassName: rook-ceph-bucket
+#     ssl: true
+- apiVersion: v1
+  data:
+    BUCKET_HOST: minio.minio-tenant-1.svc.cluster.local
+    BUCKET_NAME: vegeta-test-results
+    BUCKET_PORT: "443"
+    BUCKET_REGION: ""
+    BUCKET_SUBREGION: ""
+    BUCKET_SSL: "true"
+  kind: ConfigMap
+  metadata:
+    name: vegeta-res
+- apiVersion: v1
+  data:
+    AWS_ACCESS_KEY_ID: YWRtaW4K
+    AWS_SECRET_ACCESS_KEY: MTBmZjAyZGMtZWEzNS00ZTBkLTkxOTgtOWE3NTc4OWMyZjE2Cg==
+  kind: Secret
+  metadata:
+    name: vegeta-res
+  type: Opaque
+- apiVersion: v1
+  data:
+    service-ca.crt: |
+      -----BEGIN CERTIFICATE-----
+      MIIDXTCCAkWgAwIBAgIIYqLTC1Ql1rowDQYJKoZIhvcNAQELBQAwUjFQME4GA1UE
+      AwxHb3BlbnNoaWZ0LWt1YmUtY29udHJvbGxlci1tYW5hZ2VyLW9wZXJhdG9yX2Nz
+      ci1zaWduZXItc2lnbmVyQDE2MTQ4OTA5MjEwHhcNMjEwMzIyMTAwMzI2WhcNMjEw
+      NDIxMTAwMzI3WjAmMSQwIgYDVQQDDBtrdWJlLWNzci1zaWduZXJfQDE2MTY0MDc0
+      MDYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCzZyPGHDWCnOa/0Ydn
+      wK9Pwy3qULb8kI4pwo8qt+Lx0PynkvFrjI04kZ9RQjGP1FfeE/EBavu5pZ0Lq8wq
+      jp2FM7K0YMTOhCxBOOcaX7bIGX7+nJmCJqsG0vJfqhx+bFIRk7bHRcVEf4gXLiaR
+      5PzbnLUz+7NlxUJm1qWIGME+cQiPiRKA3j4jB248TVh4YGY7pzRhfWw+z/a+GC0W
+      WQ/7wu3BEHF6laG1e8qRfkRGo9vrf42jwAuqjbaTkdbfrD/m5LLPUnMl/Jb+tqbz
+      VBJtboHU1LQ2Yi0MOVLjSqJgiixZ2rnr3ROckPNA32ve5Zu0V92gTAekOOR9NLA2
+      hTEXAgMBAAGjYzBhMA4GA1UdDwEB/wQEAwICpDAPBgNVHRMBAf8EBTADAQH/MB0G
+      A1UdDgQWBBQIkiGspUygzHn0FuunYT0Z36vB/DAfBgNVHSMEGDAWgBQ09ROaxGWD
+      GTlGMDrcoHIknbOW3TANBgkqhkiG9w0BAQsFAAOCAQEAKL/DXg0AZDbbrliznsCs
+      zeKmj3ZAVtucAF33E5qYcyY931fXwIXHGrmAiYePC52aJDI9GilOPHUkefqP+tzX
+      OlTpQppUoXhoFSCVqdMCFchiCzx1TXC2Dy2TctWFHfvDnlpGRU50iwKTFhra7Of8
+      0VjJvhQJy7oHoYaLx01JWlpWsZq3EtTtQoUPI827sSj11VF46X/u/GCwjhb/mGCZ
+      rodvlSNQiqDaBbmpxtLLPip6q44NhOIs1wETBhlJeDnvcJmwKvw+pdFTvrK2zzfC
+      9/ROq4QEb0jTTgTZRZ7A088/aUa6MUjFimGWTiLquhmMCCCv00fVula942gXta78
+      MA==
+      -----END CERTIFICATE-----
+      -----BEGIN CERTIFICATE-----
+      MIIDiTCCAnGgAwIBAgIITYmo1XVjkZ4wDQYJKoZIhvcNAQELBQAwUjFQME4GA1UE
+      AwxHb3BlbnNoaWZ0LWt1YmUtY29udHJvbGxlci1tYW5hZ2VyLW9wZXJhdG9yX2Nz
+      ci1zaWduZXItc2lnbmVyQDE2MTQ4OTA5MjEwHhcNMjEwMzA0MjA0ODQxWhcNMjEw
+      NTAzMjA0ODQyWjBSMVAwTgYDVQQDDEdvcGVuc2hpZnQta3ViZS1jb250cm9sbGVy
+      LW1hbmFnZXItb3BlcmF0b3JfY3NyLXNpZ25lci1zaWduZXJAMTYxNDg5MDkyMTCC
+      ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMBV1ei3pO5xX2RS6PLLdLdL
+      bPuNVKAHM6HK03zKIsCOlaR9837BDUvVEiqqSrlnsGF8OMxvOQmQnlK4+zz+J4B7
+      bI4j2oBuTLCbFZMTH3MZ8RrLUq1Y5ZwY07bQc+fdOhUYbSJAz1/YKjJfoXWA06hq
+      N/rV8N4DgGQz3bUORgygnZuX4j90+cS+6N/d08R3n9+Vd2KLZ6DfTecO/veZewhP
+      JKctjEowjGd2ccrmFs6QjpwFGr3y05ofukXXH/545jyfBUujzAW9RjHatZj/jw+g
+      hcYB8FBP2pteFM/oDzxhoDWILnGo+KC5jdQ2fLEWBoUUiQGQpw0GplMFkXsFH/UC
+      AwEAAaNjMGEwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0O
+      BBYEFDT1E5rEZYMZOUYwOtygciSds5bdMB8GA1UdIwQYMBaAFDT1E5rEZYMZOUYw
+      OtygciSds5bdMA0GCSqGSIb3DQEBCwUAA4IBAQBgxG/mUT2JCaZslmjSPo9/NMIj
+      IRrHSFwOp+9d288Jz1v320SdVEvOuv1TsohNnDklRTWMVYJ6BnWCHJFLVmpUfaaV
+      HSAROXK0oio4FeOS9KRPlAVLbfInFhDHEpWzwaX3tCV+/GOMIXjxevs+tjV/Rgpp
+      5T3EHHWLrexvnUDKHKUlNPfBxSIQPtQQqyTB+d3BwmPtEUipVFroYcwRBBd+rwps
+      YUktTsIvqzNNgOTurwuDg0Dgy3wd32ED/EtIEsNA1qn43nhbGbNRkugu8JJe5hPi
+      u3VNIryX9RILWr9PO1C+AFmkh36vbtCPcu28xt2k3HWCybrT99rC/Zs9ZKpe
+      -----END CERTIFICATE-----
+  kind: ConfigMap
+  metadata:
+    name: endpoint-ca

@@ -145,12 +145,18 @@ type AttackSpec struct {
 	// - tolerations
 
 	// Specifies a config map containing the trusted TLS root CAs certificate files If unspecified, the default kubernetes and system CAs certificates will be used.
-	// The key for the file should be named: ca-bundle.crt
+	// The key for the file can be specified by RootCertsFile. If not specified it defaults to ca-bundle.crt
 	// With OpenShift this config map can get automatically populated by configuring cluster-wide trusted CA certificates and setting the following label to the empty config map: config.openshift.io/inject-trusted-cabundle=true, whose name is set into this field.
+	// When using service serving certificates an empty configMap can get automatically populated with the signer CA by using the annotation service.beta.openshift.io/inject-cabundle=true
 	//
 	//
 	// +optional
 	RootCertsConfigMap string `json:"rootCertsConfigMap,omitempty"`
+
+	// Specifies the name of the file containing the root CA. See also RootCertsConfigMap.
+	//
+	// +optional
+	RootCertsFile string `json:"rootCertsFile,omitempty"`
 
 	// Target refers to the target endpoint for the load testing including the http verb.
 	// Example: GET https://kubernetes.default.svc.cluster.local:443/healthz
@@ -183,9 +189,7 @@ type AttackSpec struct {
 // ReportSpec defines the desired report
 type ReportSpec struct {
 
-	// TODO: To check whether I want to provide a canonical way of storing reports:
-	// - Specifying the name of a PVC where the files get recorded
-	// - Name with generated part by default for keeping history
+	// TODO:
 	// - Option to activate Prometheus scrapping
 
 	// Buckets defines the histogram buckets, e.g.: "[0,1ms,10ms]".
@@ -240,7 +244,7 @@ type VegetaSpec struct {
 	// +optional
 	Image string `json:"image,omitempty"`
 
-	// Specifies the resource requests and limits of the vegeta container.
+	// Specifies the resource requests and limits of the vegeta attack containers.
 	//
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
