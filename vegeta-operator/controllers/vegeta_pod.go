@@ -166,7 +166,7 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 
 	if veg.Spec.Attack.Connections > 0 {
 		sb.WriteString(" -connections ")
-		sb.WriteString(strconv.Itoa(veg.Spec.Attack.Connections))
+		sb.WriteString(strconv.Itoa(int(veg.Spec.Attack.Connections)))
 	}
 
 	if veg.Spec.Attack.Duration != "" {
@@ -238,7 +238,7 @@ func getAttackCmd(veg *vegetav1alpha1.Vegeta) string {
 
 	if veg.Spec.Attack.Redirects != 0 {
 		sb.WriteString(" -redirects ")
-		sb.WriteString(strconv.Itoa(veg.Spec.Attack.Redirects))
+		sb.WriteString(strconv.Itoa(int(veg.Spec.Attack.Redirects)))
 	}
 
 	sb.WriteString(" -root-certs /var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt,/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")

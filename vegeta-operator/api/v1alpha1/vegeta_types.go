@@ -39,8 +39,9 @@ type AttackSpec struct {
 
 	// Specifies the maximum number of idle open connections per target host (defaults to 10000).
 	//
+	// +kubebuilder:validation:Minimum=1
 	// +optional
-	Connections int `json:"connections,omitempty"`
+	Connections uint32 `json:"connections,omitempty"`
 
 	// Specifies the amount of time to issue request to the targets. The internal concurrency structure's setup has this value as a variable. The actual run time of the test can be longer than specified due to the responses delay. Use 0 for an infinite attack.
 	//
@@ -98,13 +99,15 @@ type AttackSpec struct {
 
 	// Specifies the maximum number of bytes to capture from the body of each response. Remaining unread bytes will be fully read but discarded. [-1 = no limit] (defaults to -1).
 	//
+	// +kubebuilder:validation:Minimum=0
 	// +optional
-	MaxBody uint `json:"maxBody,omitempty"`
+	MaxBody uint32 `json:"maxBody,omitempty"`
 
 	// MaxWorkers specifies the Maximum number of workers, i.e. goroutines (defaults to 18446744073709551615).
 	//
+	// +kubebuilder:validation:Minimum=1
 	// +optional
-	MaxWorkers uint `json:"maxWorkers,omitempty"`
+	MaxWorkers uint64 `json:"maxWorkers,omitempty"`
 
 	// Specifies the name of the attack to be recorded in responses.
 	//
@@ -131,7 +134,7 @@ type AttackSpec struct {
 	// Specifies the max number of redirects followed on each request. The default is 10. When the value is -1, redirects are not followed but the response is marked as successful.
 	//
 	// +optional
-	Redirects int `json:"redirects,omitempty"`
+	Redirects int32 `json:"redirects,omitempty"`
 
 	// Specifies custom DNS resolver addresses to use for name resolution instead of the ones configured by the operating system.
 	// It is of no interest as pods allow more ellaborate DNS configuration:
@@ -144,7 +147,7 @@ type AttackSpec struct {
 	// - serviceAccountName
 	// - tolerations
 
-	// Specifies a config map containing the trusted TLS root CAs certificate files If unspecified, the default kubernetes and system CAs certificates will be used.
+	// Specifies a config map containing the trusted TLS root CAs certificate files. If unspecified, the default kubernetes and system CAs certificates will be used.
 	// The key for the file can be specified by RootCertsFile. If not specified it defaults to ca-bundle.crt
 	// With OpenShift this config map can get automatically populated by configuring cluster-wide trusted CA certificates and setting the following label to the empty config map: config.openshift.io/inject-trusted-cabundle=true, whose name is set into this field.
 	// When using service serving certificates an empty configMap can get automatically populated with the signer CA by using the annotation service.beta.openshift.io/inject-cabundle=true
@@ -182,8 +185,9 @@ type AttackSpec struct {
 
 	// Specifies the initial number of workers, i.e. goroutines, used in the attack. It defaults to 10. The actual number of workers will increase if necessary in order to sustain the requested rate, unless it'd go beyond MaxWorkers.
 	//
+	// +kubebuilder:validation:Minimum=1
 	// +optional
-	Workers uint `json:"workers,omitempty"`
+	Workers uint64 `json:"workers,omitempty"`
 }
 
 // ReportSpec defines the desired report
@@ -232,8 +236,8 @@ type VegetaSpec struct {
 
 	// Specifies the number of pods running the attack. The attack as specified above will be run by each pod. This brings an additional level of parallelism and scalability to what workers provide.
 	//
-	// +optional
-	Replicas uint `json:"replicas,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	Replicas uint32 `json:"replicas,omitempty"`
 
 	// Specifies the report parameters.
 	//
@@ -273,10 +277,15 @@ type VegetaStatus struct {
 	Phase PhaseEnum `json:"phase,omitempty"`
 }
 
+// Vegeta is the Schema for the vegeta API
+//
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// Vegeta is the Schema for the vegeta API
+// +kubebuilder:printcolumn:name="Target",type=string,JSONPath=`.spec.attack.target`
+// +kubebuilder:printcolumn:name="Duration",type=string,JSONPath=`.spec.attack..duration`
+// +kubebuilder:printcolumn:name="Rate",type=string,JSONPath=`.spec.attack..rate`
+// +kubebuilder:printcolumn:name="replicas",type=integer,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 type Vegeta struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

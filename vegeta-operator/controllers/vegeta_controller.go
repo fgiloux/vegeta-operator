@@ -97,7 +97,8 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Create new pods if required
-	for i := uint(len(childPods.Items)); i < vegeta.Spec.Replicas; i++ {
+	// TODO: pods should be created in parallel not in a sequential way
+	for i := uint32(len(childPods.Items)); i < vegeta.Spec.Replicas; i++ {
 		pod := r.aPod4Attack(vegeta)
 		if err = r.Create(ctx, pod); err != nil {
 			log.Error(err, "Failed to create new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
@@ -108,6 +109,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	if statusChanged {
 		// attack pods created, return and requeue
+		// TODO: I may want to first update the status to pending to reflect that pods have been started
 		return ctrl.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 	}
 
@@ -160,7 +162,7 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Attack pods have succeeded but report pod may need to be started
-	if vegeta.Status.Phase == vegetav1alpha1.SucceededPhase && uint(len(childPods.Items)) < vegeta.Spec.Replicas+1 {
+	if vegeta.Status.Phase == vegetav1alpha1.SucceededPhase && uint32(len(childPods.Items)) < vegeta.Spec.Replicas+1 {
 		if vegeta.Spec.Report == nil || vegeta.Spec.Report.OutputType.String() == "" {
 			// Nothing to do the report was processed within the attack pod
 			vegeta.Status.Phase = vegetav1alpha1.CompletedPhase
@@ -181,32 +183,8 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{Requeue: true, RequeueAfter: 2 * time.Second}, nil
 	}
 
-	/*
-			// Refresh Vegeta resource after pod has been created
-			err := r.Get(ctx, req.NamespacedName, vegeta)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					// Request object not found, could have been deleted after reconcile request.
-					// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-					// Return and don't requeue
-					log.V(1).Info("Vegeta resource not found. Ignoring since object must be deleted")
-					return ctrl.Result{}, nil
-				}
-				// Error reading the object - requeue the request.
-				return ctrl.Result{}, fmt.Errorf("Failed to get Vegeta resource: %v", err)
-			}
-			vegeta.Status.Phase = vegetav1alpha1.CompletedPhase
-			if err := r.Status().Update(ctx, vegeta); err != nil {
-				return ctrl.Result{}, fmt.Errorf("Unable to update Vegeta status to completion: %v", err)
-			}
-			log.V(0).Info("created", "pod", pod)
-			// report poc created, return and requeue
-			return ctrl.Result{Requeue: true}, nil
-		}
-	*/
-
 	// Checking the report pod
-	if vegeta.Status.Phase == vegetav1alpha1.SucceededPhase && uint(len(childPods.Items)) == vegeta.Spec.Replicas+1 {
+	if vegeta.Status.Phase == vegetav1alpha1.SucceededPhase && uint32(len(childPods.Items)) == vegeta.Spec.Replicas+1 {
 		for _, pod := range childPods.Items {
 			if pod.Labels["vegeta.testing.io/type"] == "report" {
 				switch pod.Status.Phase {

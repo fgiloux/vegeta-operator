@@ -16,7 +16,23 @@ spec:
     singular: vegeta
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.attack.target
+      name: Target
+      type: string
+    - jsonPath: .spec.attack..duration
+      name: Duration
+      type: string
+    - jsonPath: .spec.attack..rate
+      name: Rate
+      type: string
+    - jsonPath: .spec.replicas
+      name: replicas
+      type: integer
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Vegeta is the Schema for the vegeta API
@@ -51,6 +67,8 @@ spec:
                   connections:
                     description: Specifies the maximum number of idle open connections
                       per target host (defaults to 10000).
+                    format: int32
+                    minimum: 1
                     type: integer
                   duration:
                     description: Specifies the amount of time to issue request to
@@ -102,10 +120,14 @@ spec:
                     description: Specifies the maximum number of bytes to capture
                       from the body of each response. Remaining unread bytes will
                       be fully read but discarded. [-1 = no limit] (defaults to -1).
+                    format: int32
+                    minimum: 0
                     type: integer
                   maxWorkers:
                     description: MaxWorkers specifies the Maximum number of workers,
                       i.e. goroutines (defaults to 18446744073709551615).
+                    format: int64
+                    minimum: 1
                     type: integer
                   name:
                     description: Specifies the name of the attack to be recorded in
@@ -126,10 +148,11 @@ spec:
                     description: Specifies the max number of redirects followed on
                       each request. The default is 10. When the value is -1, redirects
                       are not followed but the response is marked as successful.
+                    format: int32
                     type: integer
                   rootCertsConfigMap:
                     description: 'Specifies a config map containing the trusted TLS
-                      root CAs certificate files If unspecified, the default kubernetes
+                      root CAs certificate files. If unspecified, the default kubernetes
                       and system CAs certificates will be used. The key for the file
                       can be specified by RootCertsFile. If not specified it defaults
                       to ca-bundle.crt With OpenShift this config map can get automatically
@@ -165,6 +188,8 @@ spec:
                       used in the attack. It defaults to 10. The actual number of
                       workers will increase if necessary in order to sustain the requested
                       rate, unless it'd go beyond MaxWorkers.
+                    format: int64
+                    minimum: 1
                     type: integer
                 type: object
               image:
@@ -176,6 +201,8 @@ spec:
                   attack as specified above will be run by each pod. This brings an
                   additional level of parallelism and scalability to what workers
                   provide.
+                format: int32
+                minimum: 1
                 type: integer
               report:
                 description: Specifies the report parameters.

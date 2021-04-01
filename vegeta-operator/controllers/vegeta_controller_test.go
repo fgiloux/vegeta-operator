@@ -59,7 +59,7 @@ var _ = Describe("Vegeta controller", func() {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
 			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
-			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint32(1)))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
 
 			By("Completion")
@@ -109,7 +109,7 @@ var _ = Describe("Vegeta controller", func() {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
 			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
-			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(2)))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint32(2)))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(2))
 			for _, podName := range createdVegeta.Status.Active {
 				msg := fmt.Sprintf("Active pods: %s \n", podName)
@@ -196,7 +196,7 @@ var _ = Describe("Vegeta controller", func() {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
 			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
-			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint32(1)))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
 
 			By("Creation of the pod")
@@ -235,7 +235,7 @@ var _ = Describe("Vegeta controller", func() {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
 			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
-			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint32(1)))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
 
 			By("Creation of the pod")
@@ -313,7 +313,7 @@ var _ = Describe("Vegeta controller", func() {
 				_ = k8sClient.Get(ctx, vLookupKey, createdVegeta)
 				return createdVegeta.Status.Phase
 			}, timeout, interval).Should(Equal(v1alpha1.RunningPhase))
-			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint(1)))
+			Expect(createdVegeta.Spec.Replicas).Should(Equal(uint32(1)))
 			Expect(len(createdVegeta.Status.Active)).Should(Equal(1))
 
 			By("Creation of the pod")
