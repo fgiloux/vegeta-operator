@@ -3,11 +3,19 @@ layout: go.kubebuilder.io/v3
 projectName: vegeta-operator
 repo: github.com/fgiloux/vegeta-operator
 resources:
-- crdVersion: v1
+- api:
+    crdVersion: v1
+    # TODO(user): Uncomment the below line if this resource's CRD is namespace scoped, else delete it.
+    # namespaced: true
+  # TODO(user): Uncomment the below line if this resource implements a controller, else delete it.
+  # controller: true
+  domain: testing.io
   group: vegeta
   kind: Vegeta
+  # TODO(user): Update the package path for your API if the below value is incorrect.
+  path: github.com/fgiloux/vegeta-operator/api/v1alpha1
   version: v1alpha1
-version: 3-alpha
+version: "3"
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
