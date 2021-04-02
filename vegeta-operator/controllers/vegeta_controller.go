@@ -95,21 +95,33 @@ func (r *VegetaReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err := r.List(ctx, &childPods, client.InNamespace(req.Namespace), client.MatchingFields{podOwnerKey: req.Name}); err != nil {
 		return ctrl.Result{}, fmt.Errorf("List Vegeta's child pods: %v", err)
 	}
-
-	// Create new pods if required
-	// TODO: pods should be created in parallel not in a sequential way
-	for i := uint32(len(childPods.Items)); i < vegeta.Spec.Replicas; i++ {
-		pod := r.aPod4Attack(vegeta)
-		if err = r.Create(ctx, pod); err != nil {
-			log.Error(err, "Failed to create new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-			return ctrl.Result{}, fmt.Errorf("Failed to create new Pod: %v", err)
+	// But first give time to the pods to get created if the reconciliation loop has already been run
+	if uint32(len(childPods.Items)) < vegeta.Spec.Replicas {
+		time.Sleep(1 * time.Second)
+		// and try to get the list again
+		if err := r.List(ctx, &childPods, client.InNamespace(req.Namespace), client.MatchingFields{podOwnerKey: req.Name}); err != nil {
+			return ctrl.Result{}, fmt.Errorf("List Vegeta's child pods: %v", err)
 		}
+	}
+	for i := uint32(len(childPods.Items)); i < vegeta.Spec.Replicas; i++ {
+		go func() {
+			pod := r.aPod4Attack(vegeta)
+			if err = r.Create(ctx, pod); err != nil {
+				log.Error(err, "Failed to create new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
+			}
+			log.V(0).Info("created", "pod", pod)
+		}()
 		statusChanged = true
-		log.V(0).Info("created", "pod", pod)
 	}
 	if statusChanged {
 		// attack pods created, return and requeue
-		// TODO: I may want to first update the status to pending to reflect that pods have been started
+		if vegeta.Status.Phase == "" {
+			vegeta.Status.Phase = vegetav1alpha1.PendingPhase
+			if err := r.Status().Update(ctx, vegeta); err != nil {
+				return ctrl.Result{Requeue: true, RequeueAfter: 5 * time.Second}, fmt.Errorf("Unable to update Vegeta status: %v", err)
+			}
+		}
+		// status updated with pending on creation of attack pods, requeue and return
 		return ctrl.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 	}
 
