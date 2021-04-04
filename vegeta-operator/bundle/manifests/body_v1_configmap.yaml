@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  body.txt: |
+    body
+kind: ConfigMap
+metadata:
+  name: body

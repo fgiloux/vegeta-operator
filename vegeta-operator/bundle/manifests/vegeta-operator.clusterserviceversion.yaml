@@ -1,0 +1,416 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "vegeta.testing.io/v1alpha1",
+          "kind": "Vegeta",
+          "metadata": {
+            "name": "vegeta-obc-sample"
+          },
+          "spec": {
+            "attack": {
+              "duration": "10s",
+              "format": "http",
+              "headers": [
+                "From: user@example.com",
+                "Pragma: no-cache"
+              ],
+              "rate": "5/1s",
+              "rootCertsConfigMap": "endpoint-ca",
+              "rootCertsFile": "service-ca.crt",
+              "target": "GET https://kubernetes.default.svc.cluster.local:443/healthz"
+            },
+            "replicas": 3,
+            "report": {
+              "outputClaim": "vegeta-res",
+              "outputType": "obc"
+            },
+            "resources": {
+              "limits": {
+                "cpu": "500m",
+                "memory": "256Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "vegeta.testing.io/v1alpha1",
+          "kind": "Vegeta",
+          "metadata": {
+            "name": "vegeta-pvc-sample"
+          },
+          "spec": {
+            "attack": {
+              "duration": "10s",
+              "format": "http",
+              "headers": [
+                "From: user@example.com",
+                "Pragma: no-cache"
+              ],
+              "rate": "5/1s",
+              "target": "GET https://kubernetes.default.svc.cluster.local:443/healthz"
+            },
+            "replicas": 3,
+            "report": {
+              "outputClaim": "results",
+              "outputType": "pvc"
+            },
+            "resources": {
+              "limits": {
+                "cpu": "500m",
+                "memory": "256Mi"
+              },
+              "requests": {
+                "cpu": "250m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "vegeta.testing.io/v1alpha1",
+          "kind": "Vegeta",
+          "metadata": {
+            "name": "vegeta-rootcerts-sample"
+          },
+          "spec": {
+            "attack": {
+              "bodyConfigMap": "body",
+              "duration": "10s",
+              "headers": [
+                "From: user@example.com",
+                "Pragma: no-cache"
+              ],
+              "keySecret": "client-key",
+              "rate": "5/1s",
+              "rootCertsConfigMap": "rootcerts",
+              "target": "GET https://kubernetes.default.svc.cluster.local:443/healthz"
+            },
+            "replicas": 1
+          }
+        },
+        {
+          "apiVersion": "vegeta.testing.io/v1alpha1",
+          "kind": "Vegeta",
+          "metadata": {
+            "name": "vegeta-sample"
+          },
+          "spec": {
+            "attack": {
+              "duration": "10s",
+              "rate": "5/1s",
+              "target": "GET https://kubernetes.default.svc.cluster.local:443/healthz"
+            },
+            "replicas": 1
+          }
+        },
+        {
+          "apiVersion": "vegeta.testing.io/v1alpha1",
+          "kind": "Vegeta",
+          "metadata": {
+            "name": "vegeta-sample-targets"
+          },
+          "spec": {
+            "attack": {
+              "duration": "10s",
+              "format": "http",
+              "headers": [
+                "From: user@example.com",
+                "Pragma: no-cache"
+              ],
+              "rate": "5/1s",
+              "targetsConfigMap": "targets"
+            },
+            "replicas": 1
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.4.0+git
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    containerImage: quay.io/fgiloux/vegeta-operator:v0.0.1
+    createdAt: "2021-04-01 12:00:00"
+    repository: https://github.com/fgiloux/vegeta-operator
+    support: Frederic Giloux
+  name: vegeta-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Vegeta is the Schema for the vegeta API
+      displayName: Vegeta
+      kind: Vegeta
+      name: vegeta.vegeta.testing.io
+      version: v1alpha1
+  description: |
+    The Vegeta operator manages distributed runs of the Vegeta HTTP load testing tool on Kubernetes through custom resources. Once installed the operator provides the following features:
+
+    * **Launch**: Simply launch a Vegeta test run (attack) on your Kubernetes cluster.
+
+    * **Configuration**: Simply configure the parameters of the Vegeta attacks through custom resources.
+
+    * **Distribution**: Specify in the custom resources how many pods need to be created.
+
+    * **Reports**: Reports are automatically generated and can get either written into logs or stored in a persistent volume or object bucket.
+
+  displayName: Vegeta
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - vegeta.testing.io
+          resources:
+          - vegeta
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - vegeta.testing.io
+          resources:
+          - vegeta/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - vegeta.testing.io
+          resources:
+          - vegeta/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: vegeta-operator-controller-manager
+      deployments:
+      - name: vegeta-operator-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                - --enable-leader-election
+                command:
+                - /manager
+                image: quay.io/fgiloux/vegeta-operator:v0.0.1
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 30Mi
+                  requests:
+                    cpu: 100m
+                    memory: 20Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: vegeta-operator-controller-manager
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          - coordination.k8s.io
+          resources:
+          - configmaps
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: vegeta-operator-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - test
+  - load
+  - performance
+  - http
+  - http2
+  - vegeta
+  maintainers:
+  - name: Frederic Giloux
+  - email: fgiloux@redhat.com
+  links:
+  - name: Vegeta Operator
+    url: https://github.com/fgiloux/vegeta-operator
+  - name: Vegeta
+    url: https://github.com/tsenart/vegeta
+  maturity: alpha
+  provider:
+    name: fgiloux
+    url: https://github.com/fgiloux/
+  icon:
+  - base64data: |
+      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
+      JEmSJLXe/wHvETWuDpQtawAAAABJRU5ErkJggg==
+    mediatype: image/svg+xml
+  version: 0.0.1

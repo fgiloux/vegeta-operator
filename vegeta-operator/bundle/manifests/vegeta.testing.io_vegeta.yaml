@@ -1,0 +1,235 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: vegeta.vegeta.testing.io
+spec:
+  group: vegeta.testing.io
+  names:
+    kind: Vegeta
+    listKind: VegetaList
+    plural: vegeta
+    singular: vegeta
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.attack.target
+      name: Target
+      type: string
+    - jsonPath: .spec.attack..duration
+      name: Duration
+      type: string
+    - jsonPath: .spec.attack..rate
+      name: Rate
+      type: string
+    - jsonPath: .spec.replicas
+      name: replicas
+      type: integer
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Vegeta is the Schema for the vegeta API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VegetaSpec defines the desired state of Vegeta
+            properties:
+              attack:
+                description: Specifies the attack parameters.
+                properties:
+                  bodyConfigMap:
+                    description: Specifies a config map containing the body of every request unless overridden per attack target. The config  map should contain a file named body.txt
+                    type: string
+                  chunked:
+                    description: Specifies whether to send request bodies with the chunked transfer encoding.
+                    type: boolean
+                  connections:
+                    description: Specifies the maximum number of idle open connections per target host (defaults to 10000).
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  duration:
+                    description: Specifies the amount of time to issue request to the targets. The internal concurrency structure's setup has this value as a variable. The actual run time of the test can be longer than specified due to the responses delay. Use 0 for an infinite attack.
+                    format: duration
+                    type: string
+                  format:
+                    description: 'Specifies the format of the target provided in the targets file, see below. Valid values are: json and http.'
+                    enum:
+                    - json
+                    - http
+                    type: string
+                  h2c:
+                    description: Specifies that HTTP2 requests are to be sent over TCP without TLS encryption.
+                    type: boolean
+                  headers:
+                    description: Specifies request headers to be used in all targets defined. You can specify as many as needed by writing a new header on a new line.
+                    items:
+                      type: string
+                    type: array
+                  http2:
+                    description: Specifies whether to enable HTTP/2 requests to servers which support it.
+                    type: boolean
+                  insecure:
+                    description: Specifies whether to ignore invalid server TLS certificates.
+                    type: boolean
+                  keepAlive:
+                    description: Specifies whether to reuse TCP connections between HTTP requests (defaults to true).
+                    type: boolean
+                  keySecret:
+                    description: Specifies the secret containing the PEM encoded TLS client certificate private key file to be used with HTTPS requests. The secret should contain a file named client.key.
+                    type: string
+                  lazy:
+                    description: Specifies whether to read the input targets lazily instead of eagerly.
+                    type: boolean
+                  maxBody:
+                    description: Specifies the maximum number of bytes to capture from the body of each response. Remaining unread bytes will be fully read but discarded. [-1 = no limit] (defaults to -1).
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  maxWorkers:
+                    description: MaxWorkers specifies the Maximum number of workers, i.e. goroutines (defaults to 18446744073709551615).
+                    format: int64
+                    minimum: 1
+                    type: integer
+                  name:
+                    description: Specifies the name of the attack to be recorded in responses.
+                    type: string
+                  proxyHeader:
+                    description: Specifies the Proxy CONNECT header.
+                    type: string
+                  rate:
+                    description: Specifies the request rate per time unit to issue against the targets. 0 or infinity means vegeta will send requests as fast as possible. Use together with MaxWorkers to model a fixed set of concurrent users sending requests serially (i.e. waiting for a response before sending the next request).Defaults to 50/1s.
+                    type: string
+                  redirects:
+                    description: Specifies the max number of redirects followed on each request. The default is 10. When the value is -1, redirects are not followed but the response is marked as successful.
+                    format: int32
+                    type: integer
+                  rootCertsConfigMap:
+                    description: 'Specifies a config map containing the trusted TLS root CAs certificate files. If unspecified, the default kubernetes and system CAs certificates will be used. The key for the file can be specified by RootCertsFile. If not specified it defaults to ca-bundle.crt With OpenShift this config map can get automatically populated by configuring cluster-wide trusted CA certificates and setting the following label to the empty config map: config.openshift.io/inject-trusted-cabundle=true, whose name is set into this field. When using service serving certificates an empty configMap can get automatically populated with the signer CA by using the annotation service.beta.openshift.io/inject-cabundle=true'
+                    type: string
+                  rootCertsFile:
+                    description: Specifies the name of the file containing the root CA. See also RootCertsConfigMap.
+                    type: string
+                  target:
+                    description: 'Target refers to the target endpoint for the load testing including the http verb. Example: GET https://kubernetes.default.svc.cluster.local:443/healthz For multiple targets use TargetsConfigMap and don''t specify this field.'
+                    type: string
+                  targetsConfigMap:
+                    description: Specifies a config map containing the file from which to read targets. The config map should contain a single file named targets with the format as extension, i.e. targets.json. See the format section to learn about the different target formats.
+                    type: string
+                  timeout:
+                    description: Specifies the timeout for each request. The default is 0 which disables timeouts.
+                    format: duration
+                    type: string
+                  workers:
+                    description: Specifies the initial number of workers, i.e. goroutines, used in the attack. It defaults to 10. The actual number of workers will increase if necessary in order to sustain the requested rate, unless it'd go beyond MaxWorkers.
+                    format: int64
+                    minimum: 1
+                    type: integer
+                type: object
+              image:
+                description: Image allows to select a different container image for the Vegeta attack than the one configured at the operator level
+                type: string
+              replicas:
+                description: Specifies the number of pods running the attack. The attack as specified above will be run by each pod. This brings an additional level of parallelism and scalability to what workers provide.
+                format: int32
+                minimum: 1
+                type: integer
+              report:
+                description: Specifies the report parameters.
+                properties:
+                  buckets:
+                    description: 'Buckets defines the histogram buckets, e.g.: "[0,1ms,10ms]".'
+                    type: string
+                  every:
+                    description: The report is written to Output at Every given interval (e.g 100ms). The default of 0 means the report will only be written after all results have been processed.
+                    format: duration
+                    type: string
+                  outputClaim:
+                    description: Specifies the output location. The value should match a persistent volume claim or an object bucket claim name. In case of PVC the names of the result and reports file are based on the creation time of the vegeta object and pod names. For now volumes are to be RWM in case of a distributed attack as they get mounted by each pod.
+                    type: string
+                  outputType:
+                    description: Specifies the type of storage to use for the output. Valid values are stdout, pvc, obc. Stdout is the default.
+                    enum:
+                    - stdout
+                    - pvc
+                    - obc
+                    type: string
+                  type:
+                    description: Type defines the report type to generate. Valid values are text, json, hist, hdrplot. It defaults to "text".
+                    enum:
+                    - text
+                    - json
+                    - hist
+                    - hdrplot
+                    type: string
+                type: object
+              resources:
+                description: Specifies the resource requests and limits of the vegeta attack containers.
+                properties:
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                    type: object
+                type: object
+            required:
+            - attack
+            type: object
+          status:
+            description: VegetaStatus defines the observed state of Vegeta
+            properties:
+              active:
+                description: Active contains the names of currently running pods.
+                items:
+                  type: string
+                type: array
+              failed:
+                description: Failed contains the names of pods that failed.
+                items:
+                  type: string
+                type: array
+              phase:
+                description: 'Phase of the processing of the Vegeta request. Possible values are: pending (no pod started), running (not all pods have terminated yet and no pod has failed), failed (one of the pod has failed), succeeded (all pods have successfully terminated but report has not been generated yet), completed (all pods have successfully terminated and report has been generated)'
+                type: string
+              succeeded:
+                description: Succeeded contains the names of pods that sucessfully completed.
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

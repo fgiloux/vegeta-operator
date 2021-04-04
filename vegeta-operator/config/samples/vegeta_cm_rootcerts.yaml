@@ -4,7 +4,7 @@ items:
 - apiVersion: vegeta.testing.io/v1alpha1
   kind: Vegeta
   metadata:
-    name: vegeta-sample
+    name: vegeta-rootcerts-sample
   spec:
     # Add fields here
     attack:

@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  targets.http: |
+    GET https://kubernetes.default.svc.cluster.local:443/healthz
+kind: ConfigMap
+metadata:
+  name: targets
