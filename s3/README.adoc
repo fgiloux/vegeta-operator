@@ -39,7 +39,7 @@ Parameters are passed to the application through environment variables:
 * BUCKET_REGION: The S3 region (optional)
 * AWS_ACCESS_KEY_ID: The ID for the authentication (optional)
 * AWS_SECRET_ACCESS_KEY: The key for the authentication (optional)
-* S3_SECURE: Wheter a secure connection (https) is to be used
+* S3_SECURE: Whether a secure connection (https) is to be used
 * S3_OBJECT_PREFIX: A common prefix of the objects containing the files to download (only for the download command)
 * S3_UPLOAD_FILE: The full path of the file to upload (only for the upload command) 
 
