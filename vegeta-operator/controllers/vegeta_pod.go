@@ -387,7 +387,7 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 							Name: veg.Spec.Attack.RootCertsConfigMap,
 						},
 						Items: []corev1.KeyToPath{
-							corev1.KeyToPath{
+							{
 								Key:  caKey,
 								Path: "tls-ca-bundle.pem",
 							},
@@ -417,7 +417,7 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 							Name: veg.Spec.Attack.BodyConfigMap,
 						},
 						Items: []corev1.KeyToPath{
-							corev1.KeyToPath{
+							{
 								Key:  "body.txt",
 								Path: "body.txt",
 							},
@@ -445,7 +445,7 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 					Secret: &corev1.SecretVolumeSource{
 						SecretName: veg.Spec.Attack.KeySecret,
 						Items: []corev1.KeyToPath{
-							corev1.KeyToPath{
+							{
 								Key:  "client.key",
 								Path: "client.key",
 							},
@@ -481,7 +481,7 @@ func getAPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 							Name: veg.Spec.Attack.TargetsConfigMap,
 						},
 						Items: []corev1.KeyToPath{
-							corev1.KeyToPath{
+							{
 								Key:  file,
 								Path: file,
 							},
@@ -550,7 +550,7 @@ func getRPVolumesAndMounts(veg *vegetav1alpha1.Vegeta) ([]corev1.Volume, []corev
 							Name: veg.Spec.Attack.RootCertsConfigMap,
 						},
 						Items: []corev1.KeyToPath{
-							corev1.KeyToPath{
+							{
 								Key:  caKey,
 								Path: "tls-ca-bundle.pem",
 							},

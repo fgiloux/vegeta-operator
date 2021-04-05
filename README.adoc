@@ -12,15 +12,16 @@ endif::[]
 :toc:
 :toc-placement!:
 
-*WORK IN PROGRESS*
+== Overview
 
-This repository contains the code for creating a container image for the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool]. Inspired by https://github.com/peter-evans/vegeta-docker[Vegeta docker].
-It also contains the code for managing vegeta resources through an operator.
+This repository contains the code for creating an operator managing runs of the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool] on Kubernetes / OpenShift.
+
+It has 3 components
+
+* **https://github.com/fgiloux/vegeta-operator/tree/main/images[A container image]** Inspired by https://github.com/peter-evans/vegeta-docker[Vegeta docker] containing the Vegeta program.
+* **https://github.com/fgiloux/vegeta-operator/tree/main/vegeta-operator[The Vegeta Operator]** that makes possibe to launch attacks by creating Vegeta https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resources].
+* **https://github.com/fgiloux/vegeta-operator/tree/main/s3[A small S3 app]** that allows to download from and to upload to an S3 bucket results and reports. It is packed into the Vegeta container image.
 
 It leverages the https://sdk.operatorframework.io/docs/building-operators/golang[operator-sdk].
 
-This project has a learning component and at this stage I think that creating a https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md[Tekton task] may be a better approach. The reasoning is that
-
-- there should not be any state to manage that would require an operator
-- Tekton Task is a lighter structure. It does not require a new controller and a new CRD, which come at a cost for the cluster it runs on
-
+For installation details and quickstart look at the https://github.com/fgiloux/vegeta-operator/tree/main/vegeta-operator[Operator's README]

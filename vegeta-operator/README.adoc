@@ -14,11 +14,82 @@ endif::[]
 
 == Overview
 
-This repository contains the code for creating an operator managing runs of the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool] on Kubernetes / OpenShift. Inspired by https://github.com/peter-evans/vegeta-docker[Vegeta docker] attacks can be triggered by creating Vegeta https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resources].
+This repository contains the code for creating an operator managing runs of the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool] on Kubernetes / OpenShift by creating Vegeta custom resources.
 
-It leverages the https://sdk.operatorframework.io/docs/building-operators/golang[operator-sdk].
+Once installed the operator provides the following features:
 
-== Build from source
+- **Launch**: Simply launch a Vegeta test run (attack) on your Kubernetes cluster.
+
+- **Configuration**: Simply configure the parameters of the Vegeta attacks through custom resources.
+
+- **Scalability**: Specify in the custom resources how many pods need to be created for a distributed attack and the resources that should get allocated to each of them.
+
+- **Reports**: Reports are automatically generated and can get either written into logs or stored in a persistent volume or object bucket. Volumes or object buckets are required for consolidated reports in case of a distributed attack.
+
+== Quickstart
+
+=== Prerequisites
+
+The operator has been tested with OpenShift 4.6 / Kubernetes 1.19 and OpenShift 4.7 / Kubernetes 1.20.
+
+=== Installation
+
+For quick installation leveraging OLM (see below) a catalog source pointing to the image index referencing the Vegeta operator image bundle needs to be created.
+
+[source,shell]
+----
+cat <<EOF | oc create -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: vegeta-manifests
+  namespace: openshift-marketplace
+spec:
+  displayName: Community Vegeta Operator
+  publisher: Frederic Giloux
+  sourceType: grpc
+  image: quay.io/fgiloux/vegeta-operator-index:1.0.0
+EOF
+----
+
+If you wish so you may create a new namespace and an operator group for insatlling the operator into it:
+[source,shell]
+----
+cat <<EOF | oc create -f -
+apiVersion: operators.coreos.com/v1alpha2
+kind: OperatorGroup
+metadata:
+  name: vegeta-group
+  namespace: vegeta-operator
+EOF
+----
+
+Creating a subscription will then install the operator. This may also be done through the UI:
+[source,shell]
+----
+cat <<EOF | oc create -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: vegeta-subscription
+  namespace: vegeta-operator
+spec:
+  channel: alpha
+  name: vegeta-operator
+  source: vegeta-manifests
+  sourceNamespace: openshift-marketplace
+EOF
+----
+
+=== Run
+
+Once the operator has been installed. Launching a load test is as simple as creating a Vegeta custom resource.
+
+A description of the configuration parameters is available in the CRD. It reflects what is available in https://github.com/tsenart/vegeta[Vegeta] with a few things that are specific to running it on Kubernetes.
+
+Examples of custom resources to configure an attack with pods mounting a config map containing the root certificate of the target or the endpoint details, storing the results in a volume or an object bucket are available in https://github.com/fgiloux/vegeta-operator/tree/main/vegeta-operator/config/samples[./config/samples].
+
+== Build operator from source
 
 To build the Vegeta Operator from source you will need
 
@@ -43,9 +114,115 @@ make docker-push IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1 <2>
 
 NOTE: You may also want to build the container image used for running Vegeta. See its https://github.com/fgiloux/vegeta-operator/tree/main/images[readme page]. The default Vegeta image in use is configurable through environment variable at the operator level or in a field of the Vegeta resource for each attack.
 
-== Installation
+== Tests
 
-For installing the Operator you currently need
+https://onsi.github.io/ginkgo/[Ginkgo], https://onsi.github.io/gomega/[Gomega] and https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/envtest[envtest] are leveraged for automated testing. You may need to https://sdk.operatorframework.io/docs/building-operators/golang/references/envtest-setup/
+[set up your environment for envtest]
+
+The automated test suite can then simply be run with:
+
+[source,shell]
+----
+make test
+----
+
+To test locally you would need to be connected to a Kubernetes cluster and have deployed the CRD (see below):
+
+You can then start your controller locally:
+
+[source,shell]
+----
+make run ENABLE_WEBHOOKS=false
+----
+
+== Deployment
+
+To deploy your code during development you just need the following steps once you are connected to a Kubernetes cluster:
+
+Register CRDs
+[source,shell]
+----
+make install
+----
+
+Deploy
+[source,shell]
+----
+export USERNAME=<quay-username>
+make deploy IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1
+----
+
+== Build an image bundle for OLM installation
+
+https://github.com/operator-framework/operator-lifecycle-manager/[Operator Lifecycle Manager (OLM)] extends Kubernetes to provide a declarative way to install, manage, and upgrade Operators and their dependencies in a cluster.
+
+https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/#3-deploy-your-operator-with-olm[To leverage OLM] an image bundle needs to be created and added to an index image.
+
+[source,shell]
+----
+export USERNAME=<quay-username>
+make bundle IMG=quay.io/$USERNAME/vegeta-operator:v0.0.1
+# Creating and pushing the image bundle containing the manifests
+make bundle-build BUNDLE_IMG=quay.io/$USERNAME/vegeta-operator-bundle:v0.0.1
+make docker-push IMG=quay.io/$USERNAME/vegeta-operator-bundle:v0.0.1
+# Creating and pushing the index referencing the image bundle
+opm index add --bundles quay.io/$USERNAME/vegeta-operator-bundle:v0.0.1 --tag quay.io/$USERNAME/vegeta-operator-index:1.0.0
+podman push quay.io/$USERNAME/vegeta-operator-index:1.0.0
+----
+
+Once the image bundle and index image are available then can be leveraged for installation.
+
+Therefore a catalog source needs to be created. You may want to amend the namespace it gets installed into and the image containing the index to match your parameters:
+[source,shell]
+----
+cat <<EOF | oc create -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: vegeta-manifests
+  namespace: openshift-marketplace
+spec:
+  displayName: Community Vegeta Operator
+  publisher: Frederic Giloux
+  sourceType: grpc
+  image: quay.io/fgiloux/vegeta-operator-index:1.0.0
+EOF
+----
+
+If you wish so you may create a new namespace and an operator group for insatlling the operator into it:
+
+[source,shell]
+----
+cat <<EOF | oc create -f -
+apiVersion: operators.coreos.com/v1alpha2
+kind: OperatorGroup
+metadata:
+  name: vegeta-group
+  namespace: vegeta-operator
+EOF
+----
+
+Creating a subscription will then install the operator. This may also be done through the UI:
+
+[source,shell]
+----
+cat <<EOF | oc create -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: vegeta-subscription
+  namespace: vegeta-operator
+spec:
+  channel: alpha
+  name: vegeta-operator
+  source: vegeta-manifests
+  sourceNamespace: openshift-marketplace
+EOF
+----
+
+== Installation from source
+
+For installing the Operator from source you currently need
 
 * to clone this repository
 * to log into the targetted cluster
