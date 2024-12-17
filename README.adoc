@@ -14,8 +14,7 @@ endif::[]
 
 == Overview
 
-> [!WARNING]
-> This repository has been archived.
+WARNING: This repository has been archived.
 
 This repository contains the code for creating an operator managing runs of the https://github.com/tsenart/vegeta[Vegeta HTTP load testing tool] on Kubernetes / OpenShift.
 
